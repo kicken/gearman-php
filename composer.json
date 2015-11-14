@@ -1,0 +1,20 @@
+{
+  "name": "kicken/gearman-php",
+  "type": "library",
+  "description": "A PHP implementation of the Gearman protocol.",
+  "license": "MIT",
+  "version": "1.0",
+  "authors": [
+    {
+      "name": "Keith Maika"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Kicken\\Gearman\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=5.4.0"
+  }
+}
