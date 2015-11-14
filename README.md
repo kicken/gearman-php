@@ -32,7 +32,7 @@ Jobs can be submitted to the workers using the Client class and either the submi
     
     $client = new \Kicken\Gearman\Client('127.0.0.1:4730');
     $job = $client->submitBackgroundJob('rot13', 'Foobar');
-    echo $job->getJobHandle();
+    echo $job;
 
 A background job will not be able to provide any data back to the client that submitted the job.  The only information that can be obtained from a background job is status by using the getJobStatus function.
 
