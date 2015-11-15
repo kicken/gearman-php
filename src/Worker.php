@@ -139,8 +139,6 @@ class Worker {
             $result = call_user_func($worker, $job);
             if ($result === false){
                 $job->sendFail();
-            } else if ($result === true){
-                $job->sendComplete();
             } else {
                 $job->sendComplete((string)$result);
             }

@@ -122,7 +122,7 @@ class WorkerJob {
         if (!$this->resultSent){
             $packet = new Packet(PacketMagic::REQ, PacketType::WORK_EXCEPTION, [$this->jobDetails->jobHandle, $exception]);
             $this->send($packet);
-            $this->resultSent = true;
+            $this->sendFail();
         }
     }
 
