@@ -49,6 +49,11 @@ class Worker {
     private $workerList = [];
 
     /**
+     * @var bool
+     */
+    private $stop = false;
+
+    /**
      * Create a new Gearman Worker to process jobs submitted to the server by clients.
      *
      * @param string|array|Connection $connection The server(s) to connect to.
@@ -95,10 +100,20 @@ class Worker {
             throw new NoRegisteredFunctionException;
         }
 
-        $this->grabJob();
-        while ($packet = $this->connection->readPacket()){
-            $this->processPacket($packet);
+        if (!$this->stop){
+            $this->grabJob();
+            while (!$this->stop){
+                $packet = $this->connection->readPacket();
+                $this->processPacket($packet);
+            }
         }
+    }
+
+    /**
+     * Stop accepting new jobs. Any job currently in progress will be completed.
+     */
+    public function stopWorking(){
+        $this->stop = true;
     }
 
     private function grabJob(){
