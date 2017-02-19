@@ -36,9 +36,11 @@ use Kicken\Gearman\Protocol\PacketType;
 class WorkerJob {
     private $jobDetails;
     private $resultSent = false;
+    private $timeout = false;
 
-    public function __construct(JobDetails $details){
+    public function __construct(JobDetails $details, $timeout = false){
         $this->jobDetails = $details;
+        $this->setTimeout($timeout);
     }
 
     public function getJobHandle(){
@@ -126,7 +128,27 @@ class WorkerJob {
         }
     }
 
+    /**
+     * Configure a timeout when waiting for foreground job results.
+     *
+     * @param int|bool $timeout Timeout in milliseconds or false for no timeout
+     */
+    public function setTimeout($timeout){
+        if ($timeout === true){
+            $timeout = ini_get('default_socket_timeout');
+        } else if ($timeout === -1){
+            $timeout = false;
+        }
+
+        if ($timeout < 0){
+            throw new \InvalidArgumentException('Timeout must be a positive integer or false.');
+        }
+
+
+        $this->timeout = $timeout;
+    }
+
     private function send(Packet $packet){
-        $this->jobDetails->connection->writePacket($packet);
+        $this->jobDetails->connection->writePacket($packet, $this->timeout);
     }
 }

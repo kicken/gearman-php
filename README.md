@@ -69,3 +69,9 @@ If you save the handle to a background job, you can check it's status using the 
     var_dump($status->isKnown(), $status->isRunning(), $status->getNumerator(), $status->getDenominator());
 
 
+## Timeouts
+
+Both clients and workers have a configurable timeout setting.  The timeout value only controls network communications and how long the client or worker will wait for data from the server.  By default there is no timeout so clients and workers will wait as long as necessary for the network.
+
+To configure a timeout for both workers and clients call the `setTimeout` method and give it a timeout in milliseconds or a boolean true/false value.  Specifying false will permit the code to wait indefinitely.  Specifying true will use PHP's `default_socket_timeout` ini setting.
+

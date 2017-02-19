@@ -57,6 +57,11 @@ class Client {
     private $statusList = [];
 
     /**
+     * @var int|bool
+     */
+    private $timeout = false;
+
+    /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
      *
      * @param string|array|Connection $connection The server(s) to connect to.
@@ -81,6 +86,7 @@ class Client {
      * @param string $workload Data for the function to operate on.
      * @param int $priority One of the JobPriority constants.
      * @param string $unique A unique ID for the job.
+     *
      * @return ClientJob
      * @see wait
      */
@@ -111,6 +117,7 @@ class Client {
      * @param string $workload Data for the function to operate on.
      * @param int $priority One of the JobPriority constants.
      * @param string $unique A unique ID for the job.
+     *
      * @return string The job handle assigned.
      */
     public function submitBackgroundJob($function, $workload, $priority = JobPriority::NORMAL, $unique = null){
@@ -136,6 +143,7 @@ class Client {
      * You must wait for the status response by calling the wait method.
      *
      * @param string $handle The handle of the job to get status information for.
+     *
      * @return JobStatus
      */
     public function getJobStatus($handle){
@@ -161,8 +169,28 @@ class Client {
         }
     }
 
+    /**
+     * Configure a timeout when waiting for foreground job results.
+     *
+     * @param int|bool $timeout Timeout in milliseconds or false for no timeout
+     */
+    public function setTimeout($timeout){
+        if ($timeout === true){
+            $timeout = ini_get('default_socket_timeout');
+        } else if ($timeout === -1){
+            $timeout = false;
+        }
+
+        if ($timeout < 0){
+            throw new \InvalidArgumentException('Timeout must be a positive integer or false.');
+        }
+
+
+        $this->timeout = $timeout;
+    }
+
     private function packetIteration(){
-        $packet = $this->connection->readPacket();
+        $packet = $this->connection->readPacket($this->timeout);
         $this->processPacket($packet);
     }
 

@@ -35,6 +35,7 @@ use Kicken\Gearman\Protocol\PacketType;
 
 /**
  * A class for registering functions with and waiting for work from a Gearman server.
+ *
  * @package Kicken\Gearman
  */
 class Worker {
@@ -52,6 +53,11 @@ class Worker {
      * @var bool
      */
     private $stop = false;
+
+    /**
+     * @var int|bool
+     */
+    private $timeout = false;
 
     /**
      * Create a new Gearman Worker to process jobs submitted to the server by clients.
@@ -76,6 +82,7 @@ class Worker {
      * @param string $name The name of the function.
      * @param callable $callback A callback to be executed when a job is received.
      * @param int|null $timeout A time limit on how the server should wait for a response.
+     *
      * @return $this
      */
     public function registerFunction($name, callable $callback, $timeout = null){
@@ -87,7 +94,7 @@ class Worker {
             $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO_TIMEOUT, [$name, $timeout]);
         }
 
-        $this->connection->writePacket($packet);
+        $this->connection->writePacket($packet, $this->timeout);
 
         return $this;
     }
@@ -103,7 +110,7 @@ class Worker {
         if (!$this->stop){
             $this->grabJob();
             while (!$this->stop){
-                $packet = $this->connection->readPacket();
+                $packet = $this->connection->readPacket($this->timeout);
                 $this->processPacket($packet);
             }
         }
@@ -116,14 +123,34 @@ class Worker {
         $this->stop = true;
     }
 
+    /**
+     * Configure a timeout when waiting for foreground job results.
+     *
+     * @param int|bool $timeout Timeout in milliseconds or false for no timeout
+     */
+    public function setTimeout($timeout){
+        if ($timeout === true){
+            $timeout = ini_get('default_socket_timeout');
+        } else if ($timeout === -1){
+            $timeout = false;
+        }
+
+        if ($timeout < 0){
+            throw new \InvalidArgumentException('Timeout must be a positive integer or false.');
+        }
+
+
+        $this->timeout = $timeout;
+    }
+
     private function grabJob(){
         $packet = new Packet(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
-        $this->connection->writePacket($packet);
+        $this->connection->writePacket($packet, $this->timeout);
     }
 
     private function sleep(){
         $packet = new Packet(PacketMagic::REQ, PacketType::PRE_SLEEP);
-        $this->connection->writePacket($packet);
+        $this->connection->writePacket($packet, $this->timeout);
     }
 
     private function processPacket(Packet $packet){
@@ -165,7 +192,7 @@ class Worker {
     private function createWorkerJob(Packet $packet){
         $jobDetails = $this->createJobDetails($packet);
 
-        return new WorkerJob($jobDetails);
+        return new WorkerJob($jobDetails, $this->timeout);
     }
 
     private function createJobDetails(Packet $packet){
