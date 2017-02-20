@@ -3,7 +3,6 @@
   "type": "library",
   "description": "A PHP implementation of the Gearman protocol.",
   "license": "MIT",
-  "version": "1.0",
   "authors": [
     {
       "name": "Keith Maika"
