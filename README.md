@@ -4,7 +4,14 @@ This library provides a pure PHP implementation of the gearman protocol for crea
 
 This library is not a replacement for the existing extension.  This library provides an alternative and incompatible API.
 
-## Quickstart guide
+## Installation
+
+Simply require the kicken/gearman-php package with composer to install the latest version.
+
+    composer require kicken/gearman-php
+
+
+## Quick start guide
 
 Below is a quick start guide to setting up workers, submitting jobs, and getting a jobs status.   For full details about the API's available, dig into the source code and have a look around.
 
