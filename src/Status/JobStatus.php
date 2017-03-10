@@ -65,6 +65,9 @@ class JobStatus {
     }
 
     public function getProgressPercentage(){
+        if ($this->statusDetails->denominator === 0){
+            return 0;
+        }
         return $this->statusDetails->numerator / $this->statusDetails->denominator;
     }
 
