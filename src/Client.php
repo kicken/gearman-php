@@ -91,9 +91,10 @@ class Client {
      * @see wait
      */
     public function submitJob($function, $workload, $priority = JobPriority::NORMAL, $unique = null){
-        if (!is_scalar($workload)) {
+        if (!is_scalar($workload)){
             throw new \InvalidArgumentException('Workload can only be of a scalar type (string, integer, etc.)');
         }
+
         $jobDetails = $this->createJobDetails($function, $workload, $unique, $priority);
         $job = new ClientJob($jobDetails);
 
@@ -123,10 +124,11 @@ class Client {
      *
      * @return string The job handle assigned.
      */
-    public function submitBackgroundJob($function, $workload, $priority = JobPriority::NORMAL, $unique = null) {
-        if (!is_scalar($workload)) {
+    public function submitBackgroundJob($function, $workload, $priority = JobPriority::NORMAL, $unique = null){
+        if (!is_scalar($workload)){
             throw new \InvalidArgumentException('Workload can only be of a scalar type (string, integer, etc.)');
         }
+
         $jobDetails = $this->createJobDetails($function, $workload, $unique, $priority);
         $jobDetails->background = true;
 

@@ -68,11 +68,12 @@ class JobStatus {
         if ($this->statusDetails->denominator === 0){
             return 0;
         }
+
         return $this->statusDetails->numerator / $this->statusDetails->denominator;
     }
 
     public function onComplete(callable $fn){
-        $wrapper = function () use ($fn){
+        $wrapper = function() use ($fn){
             return call_user_func($fn, $this);
         };
 
