@@ -154,27 +154,33 @@ class Connection {
         }
 
         $start = (int)(microtime(true) * 1000);
+        $data = '';
+        $timeUsed = 0;
         do {
             if ($timeout !== false){
-                $sec = (int)($timeout / 1000);
-                $usec = ($timeout % 1000) * 1000;
+                $timeRemaining = $timeout - $timeUsed;
+                $sec = (int)($timeRemaining / 1000);
+                $usec = ($timeRemaining % 1000) * 1000;
                 stream_set_timeout($this->stream, $sec, $usec);
             }
 
-            $data = '';
-            do {
-                $data .= fread($this->stream, $length - strlen($data));
-            } while (strlen($data) < $length && !feof($this->stream));
+            $amountToRead = $length - strlen($data);
+            $readResult = fread($this->stream, $amountToRead);
+            if (is_string($readResult)){
+                $data .= $readResult;
+            }
 
             $end = (int)(microtime(true) * 1000);
-            if ($data === ''){
+            if (strlen($data) !== $length){
+                $timeUsed += $end - $start;
+
                 if (feof($this->stream)){
                     throw new LostConnectionException;
-                } else if ($timeout !== false && $end - $start >= $timeout){
+                } else if ($timeout !== false && $timeUsed >= $timeout){
                     throw new TimeoutException;
                 }
             }
-        } while ($data === '');
+        } while (strlen($data) < $length);
 
         return $data;
     }
