@@ -161,7 +161,11 @@ class Connection {
                 stream_set_timeout($this->stream, $sec, $usec);
             }
 
-            $data = fread($this->stream, $length);
+            $data = '';
+            do {
+                $data .= fread($this->stream, $length - strlen($data));
+            } while (strlen($data) < $length && !feof($this->stream));
+
             $end = (int)(microtime(true) * 1000);
             if ($data === ''){
                 if (feof($this->stream)){
