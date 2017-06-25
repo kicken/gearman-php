@@ -133,17 +133,21 @@ class Connection {
         }
 
         $start = (int)(microtime(true) * 1000);
+        $remaining = strlen($data);
         do {
             $written = fwrite($this->stream, $data);
             $end = (int)(microtime(true) * 1000);
             if ($written === 0){
-                if (feof($this->stream)){
-                    throw new LostConnectionException;
-                } else if ($timeout !== false && $end - $start >= $timeout){
+                if ($timeout !== false && $end - $start >= $timeout){
                     throw new TimeoutException;
+                } else {
+                    throw new LostConnectionException;
                 }
+            } else {
+                $remaining -= $written;
+                $data = substr($data, $written);
             }
-        } while ($written === 0);
+        } while ($written !== 0 && $remaining > 0);
 
         fflush($this->stream);
     }
