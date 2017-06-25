@@ -135,7 +135,9 @@ class Connection {
         $start = (int)(microtime(true) * 1000);
         $remaining = strlen($data);
         do {
+            $this->pushErrorHandler();
             $written = fwrite($this->stream, $data);
+            $this->popErrorHandler();
             $end = (int)(microtime(true) * 1000);
             if ($written === 0){
                 if ($timeout !== false && $end - $start >= $timeout){
@@ -206,5 +208,20 @@ class Connection {
         }
 
         return $stream;
+    }
+
+    private function pushErrorHandler(){
+        /** @noinspection PhpUnusedLocalVariableInspection */
+        $previousErrorHandler = set_error_handler(function($errno, $errstr) use (&$previousErrorHandler){
+            if (preg_match('/errno=\d+/', $errstr, $matches)){
+                return true;
+            } else {
+                return call_user_func_array($previousErrorHandler, func_get_args());
+            }
+        }, E_NOTICE);
+    }
+
+    private function popErrorHandler(){
+        restore_error_handler();
     }
 }
