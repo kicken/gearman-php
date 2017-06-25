@@ -155,6 +155,7 @@ class Connection {
 
         $start = (int)(microtime(true) * 1000);
         $data = '';
+        $dataLength = 0;
         $timeUsed = 0;
         do {
             if ($timeout !== false){
@@ -168,10 +169,11 @@ class Connection {
             $readResult = fread($this->stream, $amountToRead);
             if (is_string($readResult)){
                 $data .= $readResult;
+                $dataLength = strlen($data);
             }
 
             $end = (int)(microtime(true) * 1000);
-            if (strlen($data) !== $length){
+            if ($dataLength !== $length){
                 $timeUsed += $end - $start;
 
                 if (feof($this->stream)){
@@ -180,7 +182,7 @@ class Connection {
                     throw new TimeoutException;
                 }
             }
-        } while (strlen($data) < $length);
+        } while ($dataLength < $length);
 
         return $data;
     }
