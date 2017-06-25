@@ -25,6 +25,7 @@
 namespace Kicken\Gearman;
 
 
+use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\JobDetails;
 use Kicken\Gearman\Job\WorkerJob;
@@ -184,6 +185,8 @@ class Worker {
             } else {
                 $job->sendComplete((string)$result);
             }
+        } catch (LostConnectionException $e){
+            throw $e;
         } catch (\Exception $e){
             $job->sendException(get_class($e) . ': ' . $e->getMessage());
         }
