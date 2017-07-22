@@ -164,13 +164,13 @@ class Worker {
     private function sleep(){
         $packet = new Packet(PacketMagic::REQ, PacketType::PRE_SLEEP);
         $this->connection->writePacket($packet, $this->timeout);
+        $this->sleeping = true;
     }
 
     private function processPacket(Packet $packet){
         switch ($packet->getType()){
             case PacketType::NO_JOB:
                 $this->sleep();
-                $this->sleeping = true;
                 break;
             case PacketType::JOB_ASSIGN:
             case PacketType::JOB_ASSIGN_UNIQ:
