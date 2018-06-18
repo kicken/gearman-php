@@ -47,6 +47,11 @@ class Client {
     private $connection;
 
     /**
+     * @var JobDetails
+     */
+    private $newJobDetails;
+
+    /**
      * @var JobDetails[]
      */
     private $jobList = [];
@@ -97,17 +102,18 @@ class Client {
 
         $jobDetails = $this->createJobDetails($function, $workload, $unique, $priority);
         $job = new ClientJob($jobDetails);
-
-        $this->jobList[] = $jobDetails;
-
         $packetType = $this->getSubmitJobType($priority, false);
         $arguments = [$jobDetails->function, $jobDetails->unique, $jobDetails->workload];
 
+        $this->newJobDetails = $jobDetails;
+
         $packet = new Packet(PacketMagic::REQ, $packetType, $arguments);
         $this->connection->writePacket($packet);
-        while ($jobDetails->jobHandle === null){
+        while ($this->newJobDetails->jobHandle === null){
             $this->packetIteration();
         }
+
+        $this->newJobDetails = null;
 
         return $job;
     }
@@ -131,17 +137,18 @@ class Client {
 
         $jobDetails = $this->createJobDetails($function, $workload, $unique, $priority);
         $jobDetails->background = true;
-
-        $this->jobList[] = $jobDetails;
-
         $packetType = $this->getSubmitJobType($priority, true);
         $arguments = [$jobDetails->function, $jobDetails->unique, $jobDetails->workload];
 
+        $this->newJobDetails = $jobDetails;
+
         $packet = new Packet(PacketMagic::REQ, $packetType, $arguments);
         $this->connection->writePacket($packet);
-        while ($jobDetails->jobHandle === null){
+        while ($this->newJobDetails->jobHandle === null){
             $this->packetIteration();
         }
+
+        $this->newJobDetails = null;
 
         return $jobDetails->jobHandle;
     }
@@ -257,28 +264,18 @@ class Client {
         }
     }
 
-    private function findJob($handle){
-        foreach ($this->jobList as $details){
-            if ($details->jobHandle === $handle){
-                return $details;
-            }
-        }
-
-        return null;
-    }
-
     private function updateJobDetails(Packet $packet){
         $packetType = $packet->getType();
         $handle = $packet->getArgument(0);
-        $job = $this->findJob($handle);
-        if (!$job && $packetType === PacketType::JOB_CREATED){
-            foreach ($this->jobList as $job){
-                if ($job->jobHandle === null){
-                    $job->jobHandle = $handle;
-                    break;
-                }
+        if ($packetType === PacketType::JOB_CREATED){
+            $this->newJobDetails->jobHandle = $handle;
+            $this->jobList[$handle] = $this->newJobDetails;
+        } else {
+            if (!$this->jobList[$handle]){
+                return;
             }
-        } else if ($job){
+
+            $job = $this->jobList[$handle];
             switch ($packetType){
                 case PacketType::WORK_STATUS:
                     $job->numerator = (int)$packet->getArgument(1);
