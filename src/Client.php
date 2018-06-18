@@ -215,11 +215,7 @@ class Client {
         } else if ($job instanceof JobStatus){
             return !$job->isResultReceived();
         } else {
-            $count = 0;
-            foreach ($this->jobList as $details){
-                $countThisOne = !$details->background && !$details->finished;
-                $count += $countThisOne?1:0;
-            }
+            $count = count($this->jobList);
 
             foreach ($this->statusList as $details){
                 $count += $details->resultReceived?0:1;
@@ -269,7 +265,9 @@ class Client {
         $handle = $packet->getArgument(0);
         if ($packetType === PacketType::JOB_CREATED){
             $this->newJobDetails->jobHandle = $handle;
-            $this->jobList[$handle] = $this->newJobDetails;
+            if (!$this->newJobDetails->background){
+                $this->jobList[$handle] = $this->newJobDetails;
+            }
         } else {
             if (!$this->jobList[$handle]){
                 return;
@@ -292,10 +290,12 @@ class Client {
                     $job->result = $job->result . $job->data;
                     $job->finished = true;
                     $job->triggerCallback($packetType == PacketType::WORK_COMPLETE?'complete':'warning');
+                    unset($this->jobList[$handle]);
                     break;
                 case PacketType::WORK_FAIL:
                     $job->finished = true;
                     $job->triggerCallback('fail');
+                    unset($this->jobList[$handle]);
                     break;
                 case PacketType::WORK_DATA:
                     $job->data = $packet->getArgument(1);
