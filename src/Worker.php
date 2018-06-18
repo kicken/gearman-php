@@ -53,6 +53,11 @@ class Worker {
     /**
      * @var bool
      */
+    private $sleeping = false;
+
+    /**
+     * @var bool
+     */
     private $stop = false;
 
     /**
@@ -100,6 +105,17 @@ class Worker {
         return $this;
     }
 
+    public function workOnce(){
+        if (!$this->sleeping) {
+            $this->grabJob();
+        }
+
+        // Always process a new packet - this allows for new NOOP packets to
+        // wake the worker back up.
+        $packet = $this->connection->readPacket($this->timeout);
+        $this->processPacket($packet);
+    }
+
     /**
      * Go into a loop accepting jobs and performing the work.
      */
@@ -108,12 +124,8 @@ class Worker {
             throw new NoRegisteredFunctionException;
         }
 
-        if (!$this->stop){
-            $this->grabJob();
-            while (!$this->stop){
-                $packet = $this->connection->readPacket($this->timeout);
-                $this->processPacket($packet);
-            }
+        while (!$this->stop){
+            $this->workOnce();
         }
     }
 
@@ -152,6 +164,7 @@ class Worker {
     private function sleep(){
         $packet = new Packet(PacketMagic::REQ, PacketType::PRE_SLEEP);
         $this->connection->writePacket($packet, $this->timeout);
+        $this->sleeping = true;
     }
 
     private function processPacket(Packet $packet){
@@ -162,10 +175,9 @@ class Worker {
             case PacketType::JOB_ASSIGN:
             case PacketType::JOB_ASSIGN_UNIQ:
                 $this->processJob($packet);
-                $this->grabJob();
                 break;
             case PacketType::NOOP:
-                $this->grabJob();
+                $this->sleeping = false;
                 break;
         }
     }
