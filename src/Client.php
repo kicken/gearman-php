@@ -165,7 +165,7 @@ class Client {
         $statusDetails = $this->createStatusDetails($handle);
         $status = new JobStatus($statusDetails);
 
-        $this->statusList[] = $statusDetails;
+        $this->statusList[$handle] = $statusDetails;
 
         $packet = new Packet(PacketMagic::REQ, PacketType::GET_STATUS, [$handle]);
         $this->connection->writePacket($packet);
@@ -215,11 +215,7 @@ class Client {
         } else if ($job instanceof JobStatus){
             return !$job->isResultReceived();
         } else {
-            $count = count($this->jobList);
-
-            foreach ($this->statusList as $details){
-                $count += $details->resultReceived?0:1;
-            }
+            $count = count($this->jobList) + count($this->statusList);
 
             return $count > 0;
         }
@@ -308,16 +304,18 @@ class Client {
 
     private function updateStatusDetails(Packet $packet){
         $handle = $packet->getArgument(0);
-        foreach ($this->statusList as $statusDetails){
-            if ($statusDetails->jobHandle === $handle){
-                $statusDetails->isKnown = (bool)(int)$packet->getArgument(1);
-                $statusDetails->isRunning = (bool)(int)$packet->getArgument(2);
-                $statusDetails->numerator = (int)$packet->getArgument(3);
-                $statusDetails->denominator = (int)$packet->getArgument(4);
-                $statusDetails->resultReceived = true;
-                $statusDetails->triggerCallback('complete');
-            }
+        if (!isset($this->statusList[$handle])){
+            return;
         }
+
+        $statusDetails = $this->statusList[$handle];
+        $statusDetails->isKnown = (bool)(int)$packet->getArgument(1);
+        $statusDetails->isRunning = (bool)(int)$packet->getArgument(2);
+        $statusDetails->numerator = (int)$packet->getArgument(3);
+        $statusDetails->denominator = (int)$packet->getArgument(4);
+        $statusDetails->resultReceived = true;
+        $statusDetails->triggerCallback('complete');
+        unset($this->statusList[$handle]);
     }
 
     private function getSubmitJobType($priority, $background){
