@@ -24,6 +24,7 @@
 
 namespace Kicken\Gearman\Job;
 
+use Kicken\Gearman\Network\Server;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -34,13 +35,13 @@ use Kicken\Gearman\Protocol\PacketType;
  * @package Kicken\Gearman\Job
  */
 class WorkerJob {
+    private $server;
     private $jobDetails;
     private $resultSent = false;
-    private $timeout = false;
 
-    public function __construct(JobDetails $details, $timeout = false){
+    public function __construct(Server $server, JobDetails $details){
+        $this->server = $server;
         $this->jobDetails = $details;
-        $this->setTimeout($timeout);
     }
 
     public function getJobHandle(){
@@ -128,27 +129,7 @@ class WorkerJob {
         }
     }
 
-    /**
-     * Configure a timeout when waiting for foreground job results.
-     *
-     * @param int|bool $timeout Timeout in milliseconds or false for no timeout
-     */
-    public function setTimeout($timeout){
-        if ($timeout === true){
-            $timeout = ini_get('default_socket_timeout');
-        } else if ($timeout === -1){
-            $timeout = false;
-        }
-
-        if ($timeout < 0){
-            throw new \InvalidArgumentException('Timeout must be a positive integer or false.');
-        }
-
-
-        $this->timeout = $timeout;
-    }
-
     private function send(Packet $packet){
-        $this->jobDetails->connection->writePacket($packet, $this->timeout);
+        $this->server->writePacket($packet);
     }
 }

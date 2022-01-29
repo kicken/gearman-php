@@ -50,10 +50,6 @@ class JobDetails {
      */
     public $client;
 
-    /**
-     * @var ServerPool
-     */
-    public $connection;
     public $callbacks = [];
 
     public function __construct($function, $workload, $unique, $priority){

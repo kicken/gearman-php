@@ -29,6 +29,7 @@ use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\JobDetails;
 use Kicken\Gearman\Job\WorkerJob;
+use Kicken\Gearman\Network\Server;
 use Kicken\Gearman\Network\ServerPool;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -60,30 +61,24 @@ class Worker {
     /**
      * @var bool
      */
-    private $sleeping = false;
-
-    /**
-     * @var bool
-     */
     private $stop = false;
-
-    /**
-     * @var int|bool
-     */
-    private $timeout = false;
 
     /**
      * Create a new Gearman Worker to process jobs submitted to the server by clients.
      *
      * @param string|string[] $serverList The server(s) to connect to.
      */
-    public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
+    public function __construct($serverList = '127.0.0.1:4730', int $timeout = null, LoopInterface $loop = null){
         if (!is_array($serverList)){
             $serverList = [$serverList];
         }
 
         $this->loop = $loop ?? Loop::get();
-        $this->serverPool = new ServerPool($serverList, $this->loop);
+        $this->serverPool = new ServerPool($serverList, function(Server $server){
+            $this->grabJob($server);
+        }, function(Server $server, Packet $packet){
+            $this->processPacket($server, $packet);
+        }, $timeout ?? ini_get('default_socket_timeout'), $this->loop);
     }
 
     /**
@@ -104,20 +99,9 @@ class Worker {
             $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO_TIMEOUT, [$name, $timeout]);
         }
 
-        $this->serverPool->writePacket($packet, $this->timeout);
+        $this->serverPool->writePacket($packet);
 
         return $this;
-    }
-
-    public function workOnce(){
-        if (!$this->sleeping){
-            $this->grabJob();
-        }
-
-        // Always process a new packet - this allows for new NOOP packets to
-        // wake the worker back up.
-        $packet = $this->serverPool->readPacket($this->timeout);
-        $this->processPacket($packet);
     }
 
     /**
@@ -128,7 +112,6 @@ class Worker {
             throw new NoRegisteredFunctionException;
         }
 
-        $this->grabJob();
         $this->loop->run();
     }
 
@@ -139,60 +122,42 @@ class Worker {
         $this->stop = true;
     }
 
-    /**
-     * Configure a timeout when waiting for foreground job results.
-     *
-     * @param int|bool $timeout Timeout in milliseconds or false for no timeout
-     */
-    public function setTimeout($timeout){
-        if ($timeout === true){
-            $timeout = ini_get('default_socket_timeout');
-        } else if ($timeout === -1){
-            $timeout = false;
+    private function grabJob(Server $server){
+        if (!$this->stop){
+            $packet = new Packet(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
+            $server->writePacket($packet);
         }
-
-        if ($timeout < 0){
-            throw new \InvalidArgumentException('Timeout must be a positive integer or false.');
-        }
-
-
-        $this->timeout = $timeout;
     }
 
-    private function grabJob(){
-        $packet = new Packet(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
-        $this->serverPool->writePacket($packet, $this->timeout);
-    }
-
-    private function sleep(){
+    private function sleep(Server $server){
         $packet = new Packet(PacketMagic::REQ, PacketType::PRE_SLEEP);
-        $this->serverPool->writePacket($packet, $this->timeout);
-        $this->sleeping = true;
+        $server->writePacket($packet);
     }
 
-    private function processPacket(Packet $packet){
+    private function processPacket(Server $server, Packet $packet){
         switch ($packet->getType()){
             case PacketType::NO_JOB:
-                $this->sleep();
+                $this->sleep($server);
                 break;
             case PacketType::JOB_ASSIGN:
             case PacketType::JOB_ASSIGN_UNIQ:
-                $this->processJob($packet);
+                $this->processJob($server, $packet);
+                $this->grabJob($server);
                 break;
             case PacketType::NOOP:
-                $this->sleeping = false;
+                $this->grabJob($server);
                 break;
         }
     }
 
-    private function processJob(Packet $packet){
+    private function processJob(Server $server, Packet $packet){
         $workerName = $packet->getArgument(1);
         if (!isset($this->workerList[$workerName])){
             throw new NoRegisteredFunctionException;
         }
 
         $worker = $this->workerList[$workerName];
-        $job = $this->createWorkerJob($packet);
+        $job = $this->createWorkerJob($server, $packet);
         try {
             $result = call_user_func($worker, $job);
             if ($result === false){
@@ -207,10 +172,10 @@ class Worker {
         }
     }
 
-    private function createWorkerJob(Packet $packet){
+    private function createWorkerJob(Server $server, Packet $packet){
         $jobDetails = $this->createJobDetails($packet);
 
-        return new WorkerJob($jobDetails, $this->timeout);
+        return new WorkerJob($server, $jobDetails);
     }
 
     private function createJobDetails(Packet $packet){
@@ -221,7 +186,6 @@ class Worker {
         }
 
         $details->jobHandle = $packet->getArgument(0);
-        $details->connection = $this->serverPool;
 
         return $details;
     }

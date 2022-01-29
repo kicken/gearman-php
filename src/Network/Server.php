@@ -9,14 +9,18 @@ class Server {
     /** @var resource */
     private $stream;
 
+    /** @var callable */
+    private $packetHandler;
+
     /** @var LoopInterface */
     private $loop;
 
     private string $writeBuffer = '';
     private string $readBuffer = '';
 
-    public function __construct($stream, LoopInterface $loop){
+    public function __construct($stream, callable $packetHandler, LoopInterface $loop){
         $this->stream = $stream;
+        $this->packetHandler = $packetHandler;
         $this->loop = $loop;
 
         stream_set_blocking($this->stream, false);
@@ -53,5 +57,7 @@ class Server {
 
         $packet = Packet::fromString($this->readBuffer);
         $this->readBuffer = '';
+
+        call_user_func($this->packetHandler, $this, $packet);
     }
 }
