@@ -29,10 +29,12 @@ use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\JobDetails;
 use Kicken\Gearman\Job\WorkerJob;
-use Kicken\Gearman\Protocol\Connection;
+use Kicken\Gearman\Network\ServerPool;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
 
 /**
  * A class for registering functions with and waiting for work from a Gearman server.
@@ -41,9 +43,14 @@ use Kicken\Gearman\Protocol\PacketType;
  */
 class Worker {
     /**
-     * @var Connection
+     * @var ServerPool
      */
-    private $connection;
+    private $serverPool;
+
+    /**
+     * @var LoopInterface
+     */
+    private $loop;
 
     /**
      * @var callable[]
@@ -68,18 +75,15 @@ class Worker {
     /**
      * Create a new Gearman Worker to process jobs submitted to the server by clients.
      *
-     * @param string|array|Connection $connection The server(s) to connect to.
+     * @param string|string[] $serverList The server(s) to connect to.
      */
-    public function __construct($connection = '127.0.0.1:4730'){
-        if (!($connection instanceof Connection)){
-            if (!is_array($connection)){
-                $connection = [$connection];
-            }
-
-            $connection = new Connection($connection);
+    public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
+        if (!is_array($serverList)){
+            $serverList = [$serverList];
         }
 
-        $this->connection = $connection;
+        $this->loop = $loop ?? Loop::get();
+        $this->serverPool = new ServerPool($serverList, $this->loop);
     }
 
     /**
@@ -100,19 +104,19 @@ class Worker {
             $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO_TIMEOUT, [$name, $timeout]);
         }
 
-        $this->connection->writePacket($packet, $this->timeout);
+        $this->serverPool->writePacket($packet, $this->timeout);
 
         return $this;
     }
 
     public function workOnce(){
-        if (!$this->sleeping) {
+        if (!$this->sleeping){
             $this->grabJob();
         }
 
         // Always process a new packet - this allows for new NOOP packets to
         // wake the worker back up.
-        $packet = $this->connection->readPacket($this->timeout);
+        $packet = $this->serverPool->readPacket($this->timeout);
         $this->processPacket($packet);
     }
 
@@ -124,9 +128,8 @@ class Worker {
             throw new NoRegisteredFunctionException;
         }
 
-        while (!$this->stop){
-            $this->workOnce();
-        }
+        $this->grabJob();
+        $this->loop->run();
     }
 
     /**
@@ -158,12 +161,12 @@ class Worker {
 
     private function grabJob(){
         $packet = new Packet(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
-        $this->connection->writePacket($packet, $this->timeout);
+        $this->serverPool->writePacket($packet, $this->timeout);
     }
 
     private function sleep(){
         $packet = new Packet(PacketMagic::REQ, PacketType::PRE_SLEEP);
-        $this->connection->writePacket($packet, $this->timeout);
+        $this->serverPool->writePacket($packet, $this->timeout);
         $this->sleeping = true;
     }
 
@@ -218,7 +221,7 @@ class Worker {
         }
 
         $details->jobHandle = $packet->getArgument(0);
-        $details->connection = $this->connection;
+        $details->connection = $this->serverPool;
 
         return $details;
     }

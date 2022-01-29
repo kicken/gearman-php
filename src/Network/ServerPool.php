@@ -22,29 +22,36 @@
  *
  */
 
-namespace Kicken\Gearman\Protocol;
+namespace Kicken\Gearman\Network;
 
 use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\EmptyServerListException;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Exception\TimeoutException;
+use Kicken\Gearman\Protocol\Packet;
+use React\EventLoop\LoopInterface;
 
 /**
  * A connection to one of several possible Gearman servers.
  *
  * @package Kicken\Gearman\Protocol
  */
-class Connection {
+class ServerPool {
     /**
      * @var string[]
      */
-    private $serverList;
+    private $possibleServerList;
 
     /**
-     * @var resource
+     * @var LoopInterface
      */
-    private $stream;
+    private $loop;
+
+    /**
+     * @var Server[]
+     */
+    private $connectedServerList = [];
 
     /**
      * Create a connection to one of several possible gearman servers.
@@ -53,32 +60,62 @@ class Connection {
      *
      * @param array $serverList A list of servers to try
      */
-    public function __construct($serverList){
-        $this->serverList = $serverList;
+    public function __construct(array $serverList, LoopInterface $loop){
+        $this->possibleServerList = $serverList;
+        $this->loop = $loop;
     }
 
     /**
-     * Attempt to connect to the gearman server.
-     * Attempts to connect to each server in the list until one connects successfully.
+     * Attempt to connect to the servers in the list.
      *
-     * @param int|bool $timeout
+     * @param ?int $timeout = null
      */
-    public function connect($timeout = false){
-        if (empty($this->serverList)){
+    public function connect(int $timeout = null){
+        if (empty($this->possibleServerList)){
             throw new EmptyServerListException;
         }
 
-        foreach ($this->serverList as $uri){
-            $stream = $this->tryServer($uri, $timeout);
-            if ($stream){
-                $this->stream = $stream;
-                break;
+        $streamList = [];
+        $connectedStreamList = [];
+        foreach ($this->possibleServerList as $url){
+            $stream = $this->initiateConnection($url);
+            if (!$stream){
+                continue;
             }
+
+            $streamList[] = $stream;
+            $this->loop->addWriteStream($stream, function($stream) use (&$connectedStreamList){
+                $this->loop->removeWriteStream($stream);
+
+                $r = $e = [];
+                $w = [$stream];
+                $n = stream_select($r, $w, $e, 0);
+                if ($n === 1){
+                    $connectedStreamList[] = $stream;
+                }
+            });
         }
 
-        if (!$this->stream){
-            throw new CouldNotConnectException;
+        if ($timeout){
+            $this->loop->addTimer($timeout, function() use (&$streamList){
+                foreach ($streamList as $stream){
+                    $this->loop->removeWriteStream($stream);
+                }
+
+                if (!$this->connectedServerList){
+                    throw new CouldNotConnectException();
+                }
+            });
         }
+
+        $this->loop->run();
+        if (!$connectedStreamList){
+            throw new CouldNotConnectException();
+        }
+
+        $this->connectedServerList = array_map(function($stream){
+            return new Server($stream, $this->loop);
+        }, $connectedStreamList);
     }
 
     /**
@@ -100,7 +137,7 @@ class Connection {
         $size = substr($header, 8, 4);
         $size = Packet::fromBigEndian($size);
 
-        $arguments = $size > 0?$this->read($size, $timeout):'';
+        $arguments = $size > 0 ? $this->read($size, $timeout) : '';
 
         return Packet::fromString($header . $arguments);
     }
@@ -114,11 +151,13 @@ class Connection {
      * @param int|bool $timeout
      */
     public function writePacket(Packet $packet, $timeout = false){
-        if (!$this->stream){
-            $this->connect($timeout);
+        if (!$this->connectedServerList){
+            $this->connect();
         }
 
-        $this->write((string)$packet, $timeout);
+        foreach ($this->connectedServerList as $server){
+            $server->writePacket($packet);
+        }
     }
 
     private function write($data, $timeout){
@@ -193,19 +232,15 @@ class Connection {
         return $data;
     }
 
-    private function tryServer($uri, $timeout){
-        if ($timeout === false){
-            $timeout = -1;
-        } else {
-            $timeout /= 1000;
+    private function initiateConnection($uri){
+        $stream = stream_socket_client($uri, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
+        if (!$stream){
+            return false;
         }
 
-        $stream = stream_socket_client($uri, $errno, $errstr, $timeout);
-        if ($stream){
-            stream_set_blocking($stream, true);
-            stream_set_read_buffer($stream, 0);
-            stream_set_write_buffer($stream, 0);
-        }
+        stream_set_blocking($stream, true);
+        stream_set_read_buffer($stream, 0);
+        stream_set_write_buffer($stream, 0);
 
         return $stream;
     }

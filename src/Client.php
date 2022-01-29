@@ -28,7 +28,7 @@ use Kicken\Gearman\Exception\ErrorException;
 use Kicken\Gearman\Job\ClientJob;
 use Kicken\Gearman\Job\JobDetails;
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Protocol\Connection;
+use Kicken\Gearman\Protocol\ServerPool;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -42,7 +42,7 @@ use Kicken\Gearman\Status\StatusDetails;
  */
 class Client {
     /**
-     * @var Connection
+     * @var ServerPool
      */
     private $connection;
 
@@ -69,14 +69,14 @@ class Client {
     /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
      *
-     * @param string|array|Connection $connection The server(s) to connect to.
+     * @param string|array|ServerPool $connection The server(s) to connect to.
      */
     public function __construct($connection = '127.0.0.1:4730'){
-        if (!($connection instanceof Connection)){
+        if (!($connection instanceof ServerPool)){
             if (!is_array($connection)){
                 $connection = [$connection];
             }
-            $connection = new Connection($connection);
+            $connection = new ServerPool($connection);
         }
 
         $this->connection = $connection;

@@ -26,7 +26,7 @@ namespace Kicken\Gearman\Job;
 
 
 use Kicken\Gearman\Client;
-use Kicken\Gearman\Protocol\Connection;
+use Kicken\Gearman\Protocol\ServerPool;
 
 /**
  * Used to share data between the Client and ClientJob classes.
@@ -51,7 +51,7 @@ class JobDetails {
     public $client;
 
     /**
-     * @var Connection
+     * @var ServerPool
      */
     public $connection;
     public $callbacks = [];
