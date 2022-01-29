@@ -67,18 +67,16 @@ class Worker {
      * Create a new Gearman Worker to process jobs submitted to the server by clients.
      *
      * @param string|string[] $serverList The server(s) to connect to.
+     * @param ?int $connectTimeout How long to wait for a server connection to establish.
+     * @param ?LoopInterface $loop Event loop implementation to use
      */
-    public function __construct($serverList = '127.0.0.1:4730', int $timeout = null, LoopInterface $loop = null){
+    public function __construct($serverList = '127.0.0.1:4730', int $connectTimeout = null, LoopInterface $loop = null){
         if (!is_array($serverList)){
             $serverList = [$serverList];
         }
 
         $this->loop = $loop ?? Loop::get();
-        $this->serverPool = new ServerPool($serverList, function(Server $server){
-            $this->grabJob($server);
-        }, function(Server $server, Packet $packet){
-            $this->processPacket($server, $packet);
-        }, $timeout ?? ini_get('default_socket_timeout'), $this->loop);
+        $this->serverPool = new ServerPool($serverList, $connectTimeout ?? ini_get('default_socket_timeout'), $this->loop);
     }
 
     /**
@@ -90,16 +88,12 @@ class Worker {
      *
      * @return $this
      */
-    public function registerFunction($name, callable $callback, $timeout = null){
-        $this->workerList[$name] = $callback;
-
-        if ($timeout === null){
-            $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO, [$name]);
-        } else {
-            $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO_TIMEOUT, [$name, $timeout]);
-        }
-
-        $this->serverPool->writePacket($packet);
+    public function registerFunction(string $name, callable $callback, int $timeout = null): self{
+        $this->workerList[$name] = [
+            'name' => $name,
+            'timeout' => $timeout,
+            'callback' => $callback
+        ];
 
         return $this;
     }
@@ -112,6 +106,13 @@ class Worker {
             throw new NoRegisteredFunctionException;
         }
 
+        $this->serverPool->connect(function(Server $server){
+            $server->onPacketReceived(function(Server $server, Packet $packet){
+                $this->processPacket($server, $packet);
+            });
+            $this->registerFunctionsWithServer($server);
+            $this->grabJob($server);
+        });
         $this->loop->run();
     }
 
@@ -120,6 +121,18 @@ class Worker {
      */
     public function stopWorking(){
         $this->stop = true;
+    }
+
+    private function registerFunctionsWithServer(Server $server){
+        foreach ($this->workerList as $item){
+            if ($item['timeout'] === null){
+                $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO, [$item['name']]);
+            } else {
+                $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO_TIMEOUT, [$item['name'], $item['timeout']]);
+            }
+
+            $server->writePacket($packet);
+        }
     }
 
     private function grabJob(Server $server){
@@ -156,7 +169,7 @@ class Worker {
             throw new NoRegisteredFunctionException;
         }
 
-        $worker = $this->workerList[$workerName];
+        $worker = $this->workerList[$workerName]['callback'];
         $job = $this->createWorkerJob($server, $packet);
         try {
             $result = call_user_func($worker, $job);

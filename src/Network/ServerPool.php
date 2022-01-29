@@ -26,8 +26,6 @@ namespace Kicken\Gearman\Network;
 
 use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\EmptyServerListException;
-use Kicken\Gearman\Exception\NotConnectedException;
-use Kicken\Gearman\Protocol\Packet;
 use React\EventLoop\LoopInterface;
 
 /**
@@ -36,26 +34,15 @@ use React\EventLoop\LoopInterface;
  * @package Kicken\Gearman\Protocol
  */
 class ServerPool {
-    /**
-     * @var string[]
-     */
-    private $possibleServerList;
+    /** @var string[] */
+    private array $possibleServerList;
 
-    /**
-     * @var LoopInterface
-     */
-    private $loop;
+    private int $connectTimeout;
 
-    /**
-     * @var Server[]
-     */
-    private $connectedServerList = [];
+    private LoopInterface $loop;
 
-    private $connectHandler;
-
-    private $packetHandler;
-
-    private $timeout;
+    /** @var Server[] */
+    private array $connectedServerList = [];
 
     /**
      * Create a connection to one of several possible gearman servers.
@@ -63,27 +50,37 @@ class ServerPool {
      * When connecting, each server will be tried in order. The first server to connect successfully will be used.
      *
      * @param array $serverList A list of servers to try
+     * @param int $connectTimeout How long to wait for a connection to be established.
+     * @param LoopInterface $loop Event loop used to monitor sockets for activity.
      */
-    public function __construct(array $serverList, callable $connectHandler, callable $packetHandler, int $timeout, LoopInterface $loop){
+    public function __construct(array $serverList, int $connectTimeout, LoopInterface $loop){
         $this->possibleServerList = $serverList;
         $this->loop = $loop;
-        $this->connectHandler = $connectHandler;
-        $this->packetHandler = $packetHandler;
-        $this->timeout = $timeout;
-        $this->connect();
+        $this->connectTimeout = $connectTimeout;
     }
 
     /**
      * Attempt to connect to the servers in the list.
+     *
+     * @param callable $onConnect A callback that will be executed when a server has successfully connected.
      */
-    private function connect(){
+    public function connect(callable $onConnect){
         if (empty($this->possibleServerList)){
             throw new EmptyServerListException;
         }
 
         $streamList = [];
         $connectedStreamList = [];
-        $timeoutTimer = null;
+        $timeoutTimer = $this->loop->addTimer($this->connectTimeout, function() use (&$streamList){
+            foreach ($streamList as $stream){
+                $this->loop->removeWriteStream($stream);
+            }
+
+            if (!$this->connectedServerList){
+                throw new CouldNotConnectException();
+            }
+        });
+
         foreach ($this->possibleServerList as $url){
             $stream = $this->initiateConnection($url);
             if (!$stream){
@@ -91,12 +88,12 @@ class ServerPool {
             }
 
             $streamList[] = $stream;
-            $this->loop->addWriteStream($stream, function($stream) use (&$streamList, &$connectedStreamList, &$timeoutTimer){
+            $this->loop->addWriteStream($stream, function($stream) use (&$streamList, &$connectedStreamList, $timeoutTimer){
                 $this->loop->removeWriteStream($stream);
 
-                $index=array_search($stream, $streamList);
+                $index = array_search($stream, $streamList);
                 unset($streamList[$index]);
-                if(!$streamList){
+                if (!$streamList){
                     $this->loop->cancelTimer($timeoutTimer);
                 }
 
@@ -109,47 +106,17 @@ class ServerPool {
             });
         }
 
-        if ($this->timeout){
-            $timeoutTimer = $this->loop->addTimer($this->timeout, function() use (&$streamList){
-                foreach ($streamList as $stream){
-                    $this->loop->removeWriteStream($stream);
-                }
-
-                if (!$this->connectedServerList){
-                    throw new CouldNotConnectException();
-                }
-            });
-        }
-
         $this->loop->run();
         if (!$connectedStreamList){
             throw new CouldNotConnectException();
         }
 
-        $this->connectedServerList = array_map(function($stream){
-            $server = new Server($stream, $this->packetHandler, $this->loop);
-            call_user_func($this->connectHandler, $server);
+        $this->connectedServerList = array_map(function($stream) use ($onConnect){
+            $server = new Server($stream, $this->loop);
+            call_user_func($onConnect, $server);
 
             return $server;
         }, $connectedStreamList);
-    }
-
-    /**
-     * Send a single packet to the gearman server.
-     *
-     * Blocks until the packet has been sent.
-     *
-     * @param Packet $packet
-     * @param int|bool $timeout
-     */
-    public function writePacket(Packet $packet){
-        if (!$this->connectedServerList){
-            throw new NotConnectedException();
-        }
-
-        foreach ($this->connectedServerList as $server){
-            $server->writePacket($packet);
-        }
     }
 
     private function initiateConnection($uri){

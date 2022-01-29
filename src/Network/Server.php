@@ -10,19 +10,15 @@ class Server {
     private $stream;
 
     /** @var callable */
-    private $packetHandler;
+    private $packetHandler = null;
 
-    /** @var LoopInterface */
-    private $loop;
-
+    private LoopInterface $loop;
     private string $writeBuffer = '';
     private string $readBuffer = '';
 
-    public function __construct($stream, callable $packetHandler, LoopInterface $loop){
+    public function __construct($stream, LoopInterface $loop){
         $this->stream = $stream;
-        $this->packetHandler = $packetHandler;
         $this->loop = $loop;
-
         stream_set_blocking($this->stream, false);
         $this->loop->addReadStream($this->stream, function(){
             $this->buffer();
@@ -32,6 +28,10 @@ class Server {
     public function writePacket(Packet $packet){
         $this->writeBuffer .= $packet;
         $this->flush();
+    }
+
+    public function onPacketReceived(callable $handler){
+        $this->packetHandler = $handler;
     }
 
     private function flush(){
@@ -58,6 +58,8 @@ class Server {
         $packet = Packet::fromString($this->readBuffer);
         $this->readBuffer = '';
 
-        call_user_func($this->packetHandler, $this, $packet);
+        if ($this->packetHandler){
+            call_user_func($this->packetHandler, $this, $packet);
+        }
     }
 }
