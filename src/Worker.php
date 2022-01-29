@@ -88,7 +88,7 @@ class Worker {
      *
      * @return $this
      */
-    public function registerFunction(string $name, callable $callback, int $timeout = null): self{
+    public function registerFunction(string $name, callable $callback, int $timeout = null) : self{
         $this->workerList[$name] = [
             'name' => $name,
             'timeout' => $timeout,
@@ -106,6 +106,11 @@ class Worker {
             throw new NoRegisteredFunctionException;
         }
 
+        $this->workAsync();
+        $this->loop->run();
+    }
+
+    public function workAsync(){
         $this->serverPool->connect(function(Server $server){
             $server->onPacketReceived(function(Server $server, Packet $packet){
                 $this->processPacket($server, $packet);
@@ -113,7 +118,6 @@ class Worker {
             $this->registerFunctionsWithServer($server);
             $this->grabJob($server);
         });
-        $this->loop->run();
     }
 
     /**
