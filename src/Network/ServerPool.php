@@ -41,9 +41,6 @@ class ServerPool {
 
     private LoopInterface $loop;
 
-    /** @var Server[] */
-    private array $connectedServerList = [];
-
     /**
      * Create a connection to one of several possible gearman servers.
      *
@@ -64,7 +61,7 @@ class ServerPool {
      *
      * @param callable $onConnect A callback that will be executed when a server has successfully connected.
      */
-    public function connect(callable $onConnect){
+    public function connect(callable $onConnect) : void{
         if (empty($this->possibleServerList)){
             throw new EmptyServerListException;
         }
@@ -75,7 +72,7 @@ class ServerPool {
             foreach ($streamList as $stream){
                 $this->loop->removeWriteStream($stream);
                 if ($this->isConnected($stream)){
-                    $this->connectedServerList[] = $server = new Server($stream, $this->loop);
+                    $server = new Server($stream, $this->loop);
                     call_user_func($onConnect, $server);
                     $hasConnected = true;
                 }
@@ -98,13 +95,14 @@ class ServerPool {
                 $index = array_search($stream, $streamList);
                 unset($streamList[$index]);
                 if ($this->isConnected($stream)){
-                    $this->connectedServerList[] = $server = new Server($stream, $this->loop);
+                    $server = new Server($stream, $this->loop);
                     call_user_func($onConnect, $server);
                 }
             });
         }
     }
 
+    /** @noinspection PhpMissingReturnTypeInspection */
     private function initiateConnection(string $uri){
         $stream = stream_socket_client($uri, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
         if (!$stream){

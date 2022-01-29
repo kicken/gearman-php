@@ -25,28 +25,20 @@
 namespace Kicken\Gearman\Status;
 
 
-use Kicken\Gearman\Client;
-
 /**
  * Used to share data between a returned JobStatus object and the gearman client object.
  *
  * @package Kicken\Gearman\Status
  */
 class StatusDetails {
-    public $resultReceived = false;
-    public $jobHandle;
-    public $isKnown = false;
-    public $isRunning = false;
-    public $numerator = 0;
-    public $denominator = 0;
-    /**
-     * @var Client
-     */
-    public $client;
-    /**
-     * @var callable[]
-     */
-    public $callbacks = [];
+    public bool $resultReceived = false;
+    public string $jobHandle;
+    public bool $isKnown = false;
+    public bool $isRunning = false;
+    public int $numerator = 0;
+    public int $denominator = 0;
+    /** @var callable[] */
+    public array $callbacks = [];
 
     public function addCallback($type, callable $fn){
         $this->callbacks[$type][] = $fn;

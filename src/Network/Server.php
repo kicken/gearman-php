@@ -25,16 +25,16 @@ class Server {
         });
     }
 
-    public function writePacket(Packet $packet){
+    public function writePacket(Packet $packet) : void{
         $this->writeBuffer .= $packet;
         $this->flush();
     }
 
-    public function onPacketReceived(callable $handler){
+    public function onPacketReceived(callable $handler) : void{
         $this->packetHandler = $handler;
     }
 
-    private function flush(){
+    private function flush() : void{
         $written = fwrite($this->stream, $this->writeBuffer);
         if ($written === strlen($this->writeBuffer)){
             $this->writeBuffer = '';
@@ -47,7 +47,7 @@ class Server {
         }
     }
 
-    private function buffer(){
+    private function buffer() : void{
         do {
             $data = fread($this->stream, 8192);
             if ($data){

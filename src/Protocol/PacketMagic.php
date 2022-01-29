@@ -29,5 +29,6 @@ final class PacketMagic {
     const REQ = "\x00REQ";
     const RES = "\x00RES";
 
-    private function __construct(){ }
+    private function __construct(){
+    }
 }

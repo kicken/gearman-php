@@ -43,25 +43,10 @@ use React\EventLoop\LoopInterface;
  * @package Kicken\Gearman
  */
 class Worker {
-    /**
-     * @var ServerPool
-     */
-    private $serverPool;
-
-    /**
-     * @var LoopInterface
-     */
-    private $loop;
-
-    /**
-     * @var callable[]
-     */
-    private $workerList = [];
-
-    /**
-     * @var bool
-     */
-    private $stop = false;
+    private ServerPool $serverPool;
+    private LoopInterface $loop;
+    private array $workerList = [];
+    private bool $stop = false;
 
     /**
      * Create a new Gearman Worker to process jobs submitted to the server by clients.
@@ -101,7 +86,7 @@ class Worker {
     /**
      * Go into a loop accepting jobs and performing the work.
      */
-    public function work(){
+    public function work() : void{
         if (empty($this->workerList)){
             throw new NoRegisteredFunctionException;
         }
@@ -110,7 +95,11 @@ class Worker {
         $this->loop->run();
     }
 
-    public function workAsync(){
+    /**
+     * Begin the process of accepting jobs while allowing the main script to continue.
+     * Main script must run the main loop at some future point.
+     */
+    public function workAsync() : void{
         $this->serverPool->connect(function(Server $server){
             $server->onPacketReceived(function(Server $server, Packet $packet){
                 $this->processPacket($server, $packet);
@@ -123,11 +112,11 @@ class Worker {
     /**
      * Stop accepting new jobs. Any job currently in progress will be completed.
      */
-    public function stopWorking(){
+    public function stopWorking() : void{
         $this->stop = true;
     }
 
-    private function registerFunctionsWithServer(Server $server){
+    private function registerFunctionsWithServer(Server $server) : void{
         foreach ($this->workerList as $item){
             if ($item['timeout'] === null){
                 $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO, [$item['name']]);
@@ -139,19 +128,19 @@ class Worker {
         }
     }
 
-    private function grabJob(Server $server){
+    private function grabJob(Server $server) : void{
         if (!$this->stop){
             $packet = new Packet(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
             $server->writePacket($packet);
         }
     }
 
-    private function sleep(Server $server){
+    private function sleep(Server $server) : void{
         $packet = new Packet(PacketMagic::REQ, PacketType::PRE_SLEEP);
         $server->writePacket($packet);
     }
 
-    private function processPacket(Server $server, Packet $packet){
+    private function processPacket(Server $server, Packet $packet) : void{
         switch ($packet->getType()){
             case PacketType::NO_JOB:
                 $this->sleep($server);
@@ -167,7 +156,7 @@ class Worker {
         }
     }
 
-    private function processJob(Server $server, Packet $packet){
+    private function processJob(Server $server, Packet $packet) : void{
         $workerName = $packet->getArgument(1);
         if (!isset($this->workerList[$workerName])){
             throw new NoRegisteredFunctionException;
@@ -189,13 +178,13 @@ class Worker {
         }
     }
 
-    private function createWorkerJob(Server $server, Packet $packet){
+    private function createWorkerJob(Server $server, Packet $packet) : WorkerJob{
         $jobDetails = $this->createJobDetails($packet);
 
         return new WorkerJob($server, $jobDetails);
     }
 
-    private function createJobDetails(Packet $packet){
+    private function createJobDetails(Packet $packet) : JobDetails{
         if ($packet->getType() === PacketType::JOB_ASSIGN){
             $details = new JobDetails($packet->getArgument(1), $packet->getArgument(2), null, null);
         } else {

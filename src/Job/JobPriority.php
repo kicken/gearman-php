@@ -34,5 +34,6 @@ final class JobPriority {
     const NORMAL = 1;
     const HIGH = 2;
 
-    private function __construct(){ }
+    private function __construct(){
+    }
 }

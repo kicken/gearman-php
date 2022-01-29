@@ -25,37 +25,30 @@
 namespace Kicken\Gearman\Job;
 
 
-use Kicken\Gearman\Client;
-use Kicken\Gearman\Protocol\ServerPool;
-
 /**
  * Used to share data between the Client and ClientJob classes.
  *
  * @package Kicken\Gearman\Job
  */
 class JobDetails {
-    public $jobHandle;
-    public $unique;
-    public $function;
-    public $background = false;
-    public $finished = false;
-    public $priority;
-    public $workload;
-    public $numerator = 0;
-    public $denominator = 0;
-    public $result;
-    public $data;
-    /**
-     * @var Client
-     */
-    public $client;
+    public string $jobHandle;
+    public string $unique;
+    public string $function;
+    public bool $background = false;
+    public bool $finished = false;
+    public int $priority;
+    public string $workload;
+    public int $numerator = 0;
+    public int $denominator = 0;
+    public string $result;
+    public string $data;
+    /** @var callable[] */
+    public array $callbacks = [];
 
-    public $callbacks = [];
-
-    public function __construct($function, $workload, $unique, $priority){
+    public function __construct(string $function, string $workload, string $unique, int $priority){
         $this->function = $function;
         $this->workload = $workload;
-        $this->unique = $unique?:uniqid();
+        $this->unique = $unique ?: uniqid();
         $this->priority = $priority;
     }
 

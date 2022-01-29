@@ -30,102 +30,98 @@ namespace Kicken\Gearman\Job;
  * @package Kicken\Gearman\Job
  */
 class ClientJob {
-    private $jobDetails;
+    private JobDetails $jobDetails;
 
     public function __construct(JobDetails $jobDetails){
         $this->jobDetails = $jobDetails;
     }
 
-    public function getJobHandle(){
+    public function getJobHandle() : string{
         return $this->jobDetails->jobHandle;
     }
 
-    public function getUniqueId(){
+    public function getUniqueId() : string{
         return $this->jobDetails->unique;
     }
 
-    public function getFunction(){
+    public function getFunction() : string{
         return $this->jobDetails->function;
     }
 
-    public function isBackgroundJob(){
+    public function isBackgroundJob() : bool{
         return $this->jobDetails->background;
     }
 
-    public function isFinished(){
+    public function isFinished() : bool{
         return $this->jobDetails->finished;
     }
 
-    public function getPriority(){
+    public function getPriority() : int{
         return $this->jobDetails->priority;
     }
 
-    public function getWorkload(){
+    public function getWorkload() : string{
         return $this->jobDetails->workload;
     }
 
-    public function getNumerator(){
+    public function getNumerator() : int{
         return $this->jobDetails->numerator;
     }
 
-    public function getDenominator(){
+    public function getDenominator() : int{
         return $this->jobDetails->denominator;
     }
 
-    public function getProgressPercentage(){
+    public function getProgressPercentage() : float{
         return $this->jobDetails->numerator / $this->jobDetails->denominator;
     }
 
-    public function getResult(){
+    public function getResult() : string{
         return $this->jobDetails->result;
     }
 
-    public function getData(){
+    public function getData() : string{
         return $this->jobDetails->data;
     }
 
-    public function wait(){
-        $this->jobDetails->client->wait($this);
-    }
-
-    public function onStatus(callable $fn){
+    public function onStatus(callable $fn) : self{
         $this->addCallback('status', $fn);
 
         return $this;
     }
 
-    public function onData(callable $fn){
+    public function onData(callable $fn) : self{
         $this->addCallback('data', $fn);
 
         return $this;
     }
 
-    public function onWarning(callable $fn){
+    public function onWarning(callable $fn) : self{
         $this->addCallback('warning', $fn);
 
         return $this;
     }
 
-    public function onComplete(callable $fn){
+    public function onComplete(callable $fn) : self{
         $this->addCallback('complete', $fn);
 
         return $this;
     }
 
-    public function onFail(callable $fn){
+    public function onFail(callable $fn) : self{
         $this->addCallback('fail', $fn);
 
         return $this;
     }
 
-    public function onException(callable $fn){
+    public function onException(callable $fn) : self{
         $this->addCallback('exception', $fn);
 
         return $this;
     }
 
     private function addCallback($type, $fn){
-        $wrapper = function () use ($fn){
+        $wrapper = function() use ($fn){
             return call_user_func($fn, $this);
         };
 

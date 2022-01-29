@@ -62,5 +62,6 @@ final class PacketType {
     const SUBMIT_JOB_SCHED = 35;
     const SUBMIT_JOB_EPOCH = 36;
 
-    private function __construct(){ }
+    private function __construct(){
+    }
 }

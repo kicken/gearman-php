@@ -33,34 +33,34 @@ class JobStatus {
     /**
      * @var StatusDetails
      */
-    private $statusDetails;
+    private StatusDetails $statusDetails;
 
 
     public function __construct(StatusDetails $details){
         $this->statusDetails = $details;
     }
 
-    public function isResultReceived(){
+    public function isResultReceived() : bool{
         return $this->statusDetails->resultReceived;
     }
 
-    public function getJobHandle(){
+    public function getJobHandle() : string{
         return $this->statusDetails->jobHandle;
     }
 
-    public function isKnown(){
+    public function isKnown() : bool{
         return $this->statusDetails->isKnown;
     }
 
-    public function isRunning(){
+    public function isRunning() : bool{
         return $this->statusDetails->isRunning;
     }
 
-    public function getNumerator(){
+    public function getNumerator() : int{
         return $this->statusDetails->numerator;
     }
 
-    public function getDenominator(){
+    public function getDenominator() : int{
         return $this->statusDetails->denominator;
     }
 

@@ -35,28 +35,28 @@ use Kicken\Gearman\Protocol\PacketType;
  * @package Kicken\Gearman\Job
  */
 class WorkerJob {
-    private $server;
-    private $jobDetails;
-    private $resultSent = false;
+    private Server $server;
+    private JobDetails $jobDetails;
+    private bool $resultSent = false;
 
     public function __construct(Server $server, JobDetails $details){
         $this->server = $server;
         $this->jobDetails = $details;
     }
 
-    public function getJobHandle(){
+    public function getJobHandle():string{
         return $this->jobDetails->jobHandle;
     }
 
-    public function getWorkload(){
+    public function getWorkload():string{
         return $this->jobDetails->workload;
     }
 
-    public function getUniqueId(){
+    public function getUniqueId():string{
         return $this->jobDetails->unique;
     }
 
-    public function getFunction(){
+    public function getFunction():string{
         return $this->jobDetails->function;
     }
 
@@ -65,7 +65,7 @@ class WorkerJob {
      *
      * @param $data
      */
-    public function sendData($data){
+    public function sendData($data) : void{
         $packet = new Packet(PacketMagic::REQ, PacketType::WORK_DATA, [$this->jobDetails->jobHandle, $data]);
 
         $this->send($packet);
@@ -77,7 +77,7 @@ class WorkerJob {
      * @param $numerator
      * @param $denominator
      */
-    public function sendStatus($numerator, $denominator){
+    public function sendStatus($numerator, $denominator) : void{
         $packet = new Packet(PacketMagic::REQ, PacketType::WORK_STATUS, [$this->jobDetails->jobHandle, $numerator, $denominator]);
         $this->send($packet);
     }
@@ -87,7 +87,7 @@ class WorkerJob {
      *
      * @param $data
      */
-    public function sendWarning($data){
+    public function sendWarning($data) : void{
         $packet = new Packet(PacketMagic::REQ, PacketType::WORK_WARNING, [$this->jobDetails->jobHandle, $data]);
         $this->send($packet);
     }
@@ -97,7 +97,7 @@ class WorkerJob {
      *
      * @param string $data
      */
-    public function sendComplete($data = ''){
+    public function sendComplete(string $data = '') : void{
         if (!$this->resultSent){
             $packet = new Packet(PacketMagic::REQ, PacketType::WORK_COMPLETE, [$this->jobDetails->jobHandle, $data]);
             $this->send($packet);
@@ -108,7 +108,7 @@ class WorkerJob {
     /**
      * Mark the job as failed.
      */
-    public function sendFail(){
+    public function sendFail() : void{
         if (!$this->resultSent){
             $packet = new Packet(PacketMagic::REQ, PacketType::WORK_FAIL, [$this->jobDetails->jobHandle]);
             $this->send($packet);
@@ -121,7 +121,7 @@ class WorkerJob {
      *
      * @param $exception
      */
-    public function sendException($exception){
+    public function sendException($exception) : void{
         if (!$this->resultSent){
             $packet = new Packet(PacketMagic::REQ, PacketType::WORK_EXCEPTION, [$this->jobDetails->jobHandle, $exception]);
             $this->send($packet);
@@ -129,7 +129,7 @@ class WorkerJob {
         }
     }
 
-    private function send(Packet $packet){
+    private function send(Packet $packet) : void{
         $this->server->writePacket($packet);
     }
 }

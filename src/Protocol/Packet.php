@@ -33,9 +33,9 @@ use Kicken\Gearman\Exception\UnexpectedPacketException;
  * @package Kicken\Gearman\Protocol
  */
 class Packet {
-    private $magic;
-    private $type;
-    private $arguments;
+    private string $magic;
+    private int $type;
+    private array $arguments;
 
     /**
      * Construct a new packet of data.
@@ -44,7 +44,7 @@ class Packet {
      * @param int $type The type of packet to send
      * @param array $arguments Arguments to include with the packet
      */
-    public function __construct($magic, $type, $arguments = []){
+    public function __construct(string $magic, int $type, array $arguments = []){
         $this->magic = $magic;
         $this->type = $type;
         $this->arguments = $arguments;
@@ -54,9 +54,10 @@ class Packet {
      * Create a new packet from a string of binary packet data.
      *
      * @param string $data Packet data
+     *
      * @return Packet
      */
-    public static function fromString($data){
+    public static function fromString(string $data) : Packet{
         $magic = substr($data, 0, 4);
         $type = substr($data, 4, 4);
         $type = static::fromBigEndian($type);
@@ -79,9 +80,10 @@ class Packet {
      * Convert an integer from machine to big endian format
      *
      * @param int $num
+     *
      * @return string
      */
-    public static function toBigEndian($num){
+    public static function toBigEndian(int $num) : string{
         return pack('N', $num);
     }
 
@@ -102,7 +104,7 @@ class Packet {
      *
      * @return int
      */
-    public function getType(){
+    public function getType() : int{
         return $this->type;
     }
 
@@ -110,9 +112,10 @@ class Packet {
      * Get the argument data at the specified index.
      *
      * @param int $index Which argument to get
+     *
      * @return mixed
      */
-    public function getArgument($index){
+    public function getArgument(int $index){
         if (isset($this->arguments[$index])){
             return $this->arguments[$index];
         }
