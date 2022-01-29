@@ -70,13 +70,18 @@ class ServerPool {
         }
 
         $streamList = [];
-        $connectedStreamList = [];
-        $timeoutTimer = $this->loop->addTimer($this->connectTimeout, function() use (&$streamList){
+        $this->loop->addTimer($this->connectTimeout, function() use (&$streamList, $onConnect){
+            $hasConnected = false;
             foreach ($streamList as $stream){
                 $this->loop->removeWriteStream($stream);
+                if ($this->isConnected($stream)){
+                    $this->connectedServerList[] = $server = new Server($stream, $this->loop);
+                    call_user_func($onConnect, $server);
+                    $hasConnected = true;
+                }
             }
 
-            if (!$this->connectedServerList){
+            if (!$hasConnected && $streamList){
                 throw new CouldNotConnectException();
             }
         });
@@ -88,38 +93,19 @@ class ServerPool {
             }
 
             $streamList[] = $stream;
-            $this->loop->addWriteStream($stream, function($stream) use (&$streamList, &$connectedStreamList, $timeoutTimer){
+            $this->loop->addWriteStream($stream, function($stream) use (&$streamList, $onConnect){
                 $this->loop->removeWriteStream($stream);
-
                 $index = array_search($stream, $streamList);
                 unset($streamList[$index]);
-                if (!$streamList){
-                    $this->loop->cancelTimer($timeoutTimer);
-                }
-
-                $r = $e = [];
-                $w = [$stream];
-                $n = stream_select($r, $w, $e, 0);
-                if ($n === 1){
-                    $connectedStreamList[] = $stream;
+                if ($this->isConnected($stream)){
+                    $this->connectedServerList[] = $server = new Server($stream, $this->loop);
+                    call_user_func($onConnect, $server);
                 }
             });
         }
-
-        $this->loop->run();
-        if (!$connectedStreamList){
-            throw new CouldNotConnectException();
-        }
-
-        $this->connectedServerList = array_map(function($stream) use ($onConnect){
-            $server = new Server($stream, $this->loop);
-            call_user_func($onConnect, $server);
-
-            return $server;
-        }, $connectedStreamList);
     }
 
-    private function initiateConnection($uri){
+    private function initiateConnection(string $uri){
         $stream = stream_socket_client($uri, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
         if (!$stream){
             return false;
@@ -130,5 +116,12 @@ class ServerPool {
         stream_set_write_buffer($stream, 0);
 
         return $stream;
+    }
+
+    private function isConnected($stream) : bool{
+        $r = $e = [];
+        $w = [$stream];
+
+        return stream_select($r, $w, $e, 0, 0) === 1;
     }
 }
