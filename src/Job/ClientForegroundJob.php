@@ -44,6 +44,6 @@ class ClientForegroundJob extends ClientJob {
             return call_user_func($fn, $this);
         };
 
-        $this->jobDetails->addCallback($type, $wrapper);
+        $this->data->addCallback($type, $wrapper);
     }
 }

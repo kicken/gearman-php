@@ -24,6 +24,8 @@
 
 namespace Kicken\Gearman\Job;
 
+use Kicken\Gearman\Job\Data\JobData;
+use Kicken\Gearman\Job\Data\WorkJobData;
 use Kicken\Gearman\Network\Server;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -34,30 +36,26 @@ use Kicken\Gearman\Protocol\PacketType;
  *
  * @package Kicken\Gearman\Job
  */
-class WorkerJob {
+class WorkerJob extends Job {
     private Server $server;
-    private JobDetails $jobDetails;
-    private bool $resultSent = false;
+    /** @var JobData|WorkJobData */
+    protected JobData $data;
 
-    public function __construct(Server $server, JobDetails $details){
+    public function __construct(Server $server, WorkJobData $details){
         $this->server = $server;
-        $this->jobDetails = $details;
+        $this->data = $details;
     }
 
-    public function getJobHandle():string{
-        return $this->jobDetails->jobHandle;
+    public function getWorkload() : string{
+        return $this->data->workload;
     }
 
-    public function getWorkload():string{
-        return $this->jobDetails->workload;
+    public function getUniqueId() : string{
+        return $this->data->unique;
     }
 
-    public function getUniqueId():string{
-        return $this->jobDetails->unique;
-    }
-
-    public function getFunction():string{
-        return $this->jobDetails->function;
+    public function getFunction() : string{
+        return $this->data->function;
     }
 
     /**
@@ -66,7 +64,7 @@ class WorkerJob {
      * @param $data
      */
     public function sendData($data) : void{
-        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_DATA, [$this->jobDetails->jobHandle, $data]);
+        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_DATA, [$this->data->jobHandle, $data]);
 
         $this->send($packet);
     }
@@ -78,8 +76,10 @@ class WorkerJob {
      * @param $denominator
      */
     public function sendStatus($numerator, $denominator) : void{
-        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_STATUS, [$this->jobDetails->jobHandle, $numerator, $denominator]);
+        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_STATUS, [$this->data->jobHandle, $numerator, $denominator]);
         $this->send($packet);
+        $this->data->numerator = $numerator;
+        $this->data->denominator = $denominator;
     }
 
     /**
@@ -88,7 +88,7 @@ class WorkerJob {
      * @param $data
      */
     public function sendWarning($data) : void{
-        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_WARNING, [$this->jobDetails->jobHandle, $data]);
+        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_WARNING, [$this->data->jobHandle, $data]);
         $this->send($packet);
     }
 
@@ -98,10 +98,10 @@ class WorkerJob {
      * @param string $data
      */
     public function sendComplete(string $data = '') : void{
-        if (!$this->resultSent){
-            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_COMPLETE, [$this->jobDetails->jobHandle, $data]);
+        if (!$this->data->finished){
+            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_COMPLETE, [$this->data->jobHandle, $data]);
             $this->send($packet);
-            $this->resultSent = true;
+            $this->data->finished = true;
         }
     }
 
@@ -109,10 +109,10 @@ class WorkerJob {
      * Mark the job as failed.
      */
     public function sendFail() : void{
-        if (!$this->resultSent){
-            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_FAIL, [$this->jobDetails->jobHandle]);
+        if (!$this->data->finished){
+            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_FAIL, [$this->data->jobHandle]);
             $this->send($packet);
-            $this->resultSent = true;
+            $this->data->finished = true;
         }
     }
 
@@ -122,8 +122,8 @@ class WorkerJob {
      * @param $exception
      */
     public function sendException($exception) : void{
-        if (!$this->resultSent){
-            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_EXCEPTION, [$this->jobDetails->jobHandle, $exception]);
+        if (!$this->data->finished){
+            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_EXCEPTION, [$this->data->jobHandle, $exception]);
             $this->send($packet);
             $this->sendFail();
         }

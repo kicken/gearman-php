@@ -27,7 +27,7 @@ namespace Kicken\Gearman;
 
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
-use Kicken\Gearman\Job\JobDetails;
+use Kicken\Gearman\Job\Data\WorkJobData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Job\WorkerJob;
 use Kicken\Gearman\Network\Server;
@@ -187,14 +187,12 @@ class Worker {
         return new WorkerJob($server, $jobDetails);
     }
 
-    private function createJobDetails(Packet $packet) : JobDetails{
+    private function createJobDetails(Packet $packet) : WorkJobData{
         if ($packet->getType() === PacketType::JOB_ASSIGN){
-            $details = new JobDetails($packet->getArgument(1), $packet->getArgument(2), null, JobPriority::NORMAL);
+            $details = new WorkJobData($packet->getArgument(0), $packet->getArgument(1), null, JobPriority::NORMAL, $packet->getArgument(2));
         } else {
-            $details = new JobDetails($packet->getArgument(1), $packet->getArgument(3), $packet->getArgument(2), JobPriority::NORMAL);
+            $details = new WorkJobData($packet->getArgument(0), $packet->getArgument(1), $packet->getArgument(2), JobPriority::NORMAL, $packet->getArgument(3));
         }
-
-        $details->jobHandle = $packet->getArgument(0);
 
         return $details;
     }

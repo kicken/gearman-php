@@ -22,23 +22,23 @@
  *
  */
 
-namespace Kicken\Gearman\Status;
+namespace Kicken\Gearman\Job;
 
+use Kicken\Gearman\Job\Data\JobData;
+use Kicken\Gearman\Job\Data\JobStatusData;
 
-/**
- * Used to share data between a returned JobStatus object and the gearman client object.
- *
- * @package Kicken\Gearman\Status
- */
-class StatusDetails {
-    public string $jobHandle;
-    public bool $resultReceived = false;
-    public bool $isKnown = false;
-    public bool $isRunning = false;
-    public int $numerator = 0;
-    public int $denominator = 0;
+class JobStatus extends Job {
+    protected JobData $data;
 
-    public function __construct(string $jobHandle){
-        $this->jobHandle = $jobHandle;
+    public function __construct(JobStatusData $details){
+        $this->data = $details;
+    }
+
+    public function isKnown() : bool{
+        return $this->data->isKnown;
+    }
+
+    public function isRunning() : bool{
+        return $this->data->isRunning;
     }
 }

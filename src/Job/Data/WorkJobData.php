@@ -22,49 +22,21 @@
  *
  */
 
-namespace Kicken\Gearman\Status;
-
-/**
- * Provides access to status information regarding a job.
- *
- * @param StatusDetails $details
- */
-class JobStatus {
-    /**
-     * @var StatusDetails
-     */
-    private StatusDetails $statusDetails;
+namespace Kicken\Gearman\Job\Data;
 
 
-    public function __construct(StatusDetails $details){
-        $this->statusDetails = $details;
-    }
+class WorkJobData extends JobData {
+    public bool $finished = false;
+    public string $unique;
+    public string $function;
+    public int $priority;
+    public string $workload;
 
-    public function getJobHandle() : string{
-        return $this->statusDetails->jobHandle;
-    }
-
-    public function isKnown() : bool{
-        return $this->statusDetails->isKnown;
-    }
-
-    public function isRunning() : bool{
-        return $this->statusDetails->isRunning;
-    }
-
-    public function getNumerator() : int{
-        return $this->statusDetails->numerator;
-    }
-
-    public function getDenominator() : int{
-        return $this->statusDetails->denominator;
-    }
-
-    public function getProgressPercentage(){
-        if ($this->statusDetails->denominator === 0){
-            return 0;
-        }
-
-        return $this->statusDetails->numerator / $this->statusDetails->denominator;
+    public function __construct(?string $jobHandle, string $function, ?string $unique, int $priority, string $workload){
+        parent::__construct($jobHandle);
+        $this->function = $function;
+        $this->unique = $unique;
+        $this->priority = $priority;
+        $this->workload = $workload;
     }
 }

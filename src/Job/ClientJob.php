@@ -24,61 +24,48 @@
 
 namespace Kicken\Gearman\Job;
 
-use Kicken\Gearman\Network\Server;
+use Kicken\Gearman\Job\Data\ClientJobData;
+use Kicken\Gearman\Job\Data\JobData;
+use Kicken\Gearman\Job\Data\WorkJobData;
 
 /**
  * Provides information regarding a job to a client.
  *
  * @package Kicken\Gearman\Job
  */
-abstract class ClientJob {
-    protected JobDetails $jobDetails;
+abstract class ClientJob extends Job {
+    /** @var JobData|ClientJobData */
+    protected JobData $data;
 
-    public function __construct(JobDetails $jobDetails){
-        $this->jobDetails = $jobDetails;
-    }
-
-    public function getJobHandle() : string{
-        return $this->jobDetails->jobHandle;
+    public function __construct(ClientJobData $jobDetails){
+        $this->data = $jobDetails;
     }
 
     public function getUniqueId() : string{
-        return $this->jobDetails->unique;
+        return $this->data->unique;
     }
 
     public function getFunction() : string{
-        return $this->jobDetails->function;
+        return $this->data->function;
     }
 
     public function isFinished() : bool{
-        return $this->jobDetails->finished;
+        return $this->data->finished;
     }
 
     public function getPriority() : int{
-        return $this->jobDetails->priority;
+        return $this->data->priority;
     }
 
     public function getWorkload() : string{
-        return $this->jobDetails->workload;
-    }
-
-    public function getNumerator() : int{
-        return $this->jobDetails->numerator;
-    }
-
-    public function getDenominator() : int{
-        return $this->jobDetails->denominator;
-    }
-
-    public function getProgressPercentage() : float{
-        return $this->jobDetails->numerator / $this->jobDetails->denominator;
+        return $this->data->workload;
     }
 
     public function getResult() : string{
-        return $this->jobDetails->result;
+        return $this->data->result;
     }
 
     public function getData() : string{
-        return $this->jobDetails->data;
+        return $this->data->data;
     }
 }

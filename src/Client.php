@@ -28,15 +28,16 @@ use Kicken\Gearman\Exception\ErrorException;
 use Kicken\Gearman\Job\ClientBackgroundJob;
 use Kicken\Gearman\Job\ClientForegroundJob;
 use Kicken\Gearman\Job\ClientJob;
-use Kicken\Gearman\Job\JobDetails;
+use Kicken\Gearman\Job\Data\ClientJobData;
+use Kicken\Gearman\Job\Data\JobData;
+use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
+use Kicken\Gearman\Job\JobStatus;
 use Kicken\Gearman\Network\Server;
 use Kicken\Gearman\Network\ServerPool;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
-use Kicken\Gearman\Status\JobStatus;
-use Kicken\Gearman\Status\StatusDetails;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\Promise;
@@ -50,9 +51,9 @@ use React\Promise\PromiseInterface;
 class Client {
     private LoopInterface $loop;
     private ServerPool $serverPool;
-    /** @var JobDetails[] */
+    /** @var ClientJobData[] */
     private array $jobList = [];
-    /** @var StatusDetails[] */
+    /** @var JobStatusData[] */
     private array $statusList = [];
 
     /**
@@ -78,13 +79,12 @@ class Client {
      * @param int $priority One of the JobPriority constants.
      * @param ?string $unique A unique ID for the job.
      *
-     * @return Promise<ClientJob>
-     * @see wait
+     * @return PromiseInterface<ClientJob>
      */
     public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = null) : PromiseInterface{
-        $jobDetails = new JobDetails($function, $workload, $unique, $priority);
+        $jobDetails = new ClientJobData($function, $workload, $unique ?? uniqid(), $priority);
 
-        return $this->doSubmitJob($jobDetails, $priority);
+        return $this->doSubmitJob($jobDetails);
     }
 
     /**
@@ -97,13 +97,13 @@ class Client {
      * @param int $priority One of the JobPriority constants.
      * @param ?string $unique A unique ID for the job.
      *
-     * @return Promise<Clientjob> The job handle assigned.
+     * @return PromiseInterface<Clientjob> The job handle assigned.
      */
     public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = null) : PromiseInterface{
-        $jobDetails = new JobDetails($function, $workload, $unique, $priority);
+        $jobDetails = new ClientJobData($function, $workload, $unique ?? uniqid(), $priority);
         $jobDetails->background = true;
 
-        return $this->doSubmitJob($jobDetails, $priority);
+        return $this->doSubmitJob($jobDetails);
     }
 
     /**
@@ -116,7 +116,7 @@ class Client {
      */
     public function getJobStatus(string $handle) : PromiseInterface{
         return $this->connect()->then(function() use ($handle){
-            $status = new StatusDetails($handle);
+            $status = new JobStatusData($handle);
             $this->statusList[] = $status;
 
             $packet = new Packet(PacketMagic::REQ, PacketType::GET_STATUS, [$handle]);
@@ -125,7 +125,7 @@ class Client {
 
             return new Promise(function($resolve) use ($status){
                 $loop = function() use ($status, $resolve, &$loop){
-                    if ($status->resultReceived){
+                    if ($status->responseReceived){
                         $resolve(new JobStatus($status));
                     } else {
                         usleep(1000);
@@ -138,14 +138,13 @@ class Client {
     }
 
     /**
-     * @param int $priority
-     * @param JobDetails $jobDetails
+     * @param ClientJobData $jobDetails
      *
-     * @return Promise<ClientJob>
+     * @return PromiseInterface<ClientJob>
      */
-    private function doSubmitJob(JobDetails $jobDetails, int $priority) : PromiseInterface{
-        return $this->connect()->then(function() use ($jobDetails, $priority){
-            $packetType = $this->getSubmitJobType($priority, $jobDetails->background);
+    private function doSubmitJob(ClientJobData $jobDetails) : PromiseInterface{
+        return $this->connect()->then(function() use ($jobDetails){
+            $packetType = $this->getSubmitJobType($jobDetails->priority, $jobDetails->background);
             $arguments = [$jobDetails->function, $jobDetails->unique, $jobDetails->workload];
 
             $packet = new Packet(PacketMagic::REQ, $packetType, $arguments);
@@ -173,78 +172,69 @@ class Client {
     }
 
     private function processPacket(Packet $packet){
+        $handle = $packet->getArgument(0);
         switch ($packet->getType()){
             case PacketType::JOB_CREATED:
+                $lastJob = end($this->jobList);
+                $lastJob->jobHandle = $handle;
+                break;
             case PacketType::WORK_DATA:
             case PacketType::WORK_WARNING:
             case PacketType::WORK_STATUS:
             case PacketType::WORK_COMPLETE:
             case PacketType::WORK_FAIL:
             case PacketType::WORK_EXCEPTION:
-                $this->updateJobDetails($packet);
+                if ($data = $this->findHandleInList($this->jobList, $handle)){
+                    $this->updateWorkJobData($packet, ...$data);
+                }
                 break;
             case PacketType::STATUS_RES:
-                $this->updateStatusDetails($packet);
+                if ($data = $this->findHandleInList($this->statusList, $handle)){
+                    $this->UpdateJobStatusData($packet, ...$data);
+                }
                 break;
             case PacketType::ERROR:
                 throw new ErrorException($packet);
         }
     }
 
-    private function updateJobDetails(Packet $packet){
-        $packetType = $packet->getType();
-        $handle = $packet->getArgument(0);
-        if ($packetType === PacketType::JOB_CREATED){
-            $lastJob = end($this->jobList);
-            $lastJob->jobHandle = $handle;
-        } else if ($entry = $this->findHandleInList($this->jobList, $handle)){
-            /** @var JobDetails $job */
-            [$index, $job] = $entry;
-            switch ($packetType){
-                case PacketType::WORK_STATUS:
-                    $job->numerator = (int)$packet->getArgument(1);
-                    $job->denominator = (int)$packet->getArgument(2);
-                    $job->triggerCallback('status');
-                    break;
-                case PacketType::WORK_WARNING:
-                    $job->data = $packet->getArgument(1);
-                    $job->triggerCallback('warning');
-                    break;
-                case PacketType::WORK_COMPLETE:
-                case PacketType::WORK_EXCEPTION:
-                    $job->data = $packet->getArgument(1);
-                    $job->result = $job->data;
-                    $job->finished = true;
-                    $job->triggerCallback($packetType == PacketType::WORK_COMPLETE ? 'complete' : 'warning');
-                    unset($this->jobList[$index]);
-                    break;
-                case PacketType::WORK_FAIL:
-                    $job->finished = true;
-                    $job->triggerCallback('fail');
-                    unset($this->jobList[$index]);
-                    break;
-                case PacketType::WORK_DATA:
-                    $job->data = $packet->getArgument(1);
-                    $job->triggerCallback('data');
-                    break;
-            }
+    private function updateWorkJobData(Packet $packet, int $index, ClientJobData $data){
+        switch ($packet->getType()){
+            case PacketType::WORK_STATUS:
+                $data->numerator = (int)$packet->getArgument(1);
+                $data->denominator = (int)$packet->getArgument(2);
+                $data->triggerCallback('status');
+                break;
+            case PacketType::WORK_WARNING:
+                $data->data = $packet->getArgument(1);
+                $data->triggerCallback('warning');
+                break;
+            case PacketType::WORK_COMPLETE:
+            case PacketType::WORK_EXCEPTION:
+                $data->data = $packet->getArgument(1);
+                $data->result = $data->data;
+                $data->finished = true;
+                $data->triggerCallback($packet->getType() == PacketType::WORK_COMPLETE ? 'complete' : 'warning');
+                unset($this->jobList[$index]);
+                break;
+            case PacketType::WORK_FAIL:
+                $data->finished = true;
+                $data->triggerCallback('fail');
+                unset($this->jobList[$index]);
+                break;
+            case PacketType::WORK_DATA:
+                $data->data = $packet->getArgument(1);
+                $data->triggerCallback('data');
+                break;
         }
     }
 
-    private function updateStatusDetails(Packet $packet){
-        $handle = $packet->getArgument(0);
-        $entry = $this->findHandleInList($this->statusList, $handle);
-        if (!$entry){
-            return;
-        }
-
-        /** @var StatusDetails $statusDetails */
-        [$index, $statusDetails] = $entry;
-        $statusDetails->isKnown = (bool)(int)$packet->getArgument(1);
-        $statusDetails->isRunning = (bool)(int)$packet->getArgument(2);
-        $statusDetails->numerator = (int)$packet->getArgument(3);
-        $statusDetails->denominator = (int)$packet->getArgument(4);
-        $statusDetails->resultReceived = true;
+    private function UpdateJobStatusData(Packet $packet, int $index, JobStatusData $data){
+        $data->isKnown = (bool)(int)$packet->getArgument(1);
+        $data->isRunning = (bool)(int)$packet->getArgument(2);
+        $data->numerator = (int)$packet->getArgument(3);
+        $data->denominator = (int)$packet->getArgument(4);
+        $data->responseReceived = true;
         unset($this->statusList[$index]);
     }
 
@@ -289,6 +279,10 @@ class Client {
     }
 
     private function findHandleInList(array $list, string $handle) : ?array{
+        /**
+         * @var int $index
+         * @var JobData $details
+         */
         foreach ($list as $index => $details){
             if ($details->jobHandle === $handle){
                 return [$index, $details];
