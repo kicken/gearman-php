@@ -197,7 +197,9 @@ class Client {
         if ($packetType === PacketType::JOB_CREATED){
             $lastJob = end($this->jobList);
             $lastJob->jobHandle = $handle;
-        } else if ($job = $this->getJobByHandle($handle)){
+        } else if ($entry = $this->findHandleInList($this->jobList, $handle)){
+            /** @var JobDetails $job */
+            [$index, $job] = $entry;
             switch ($packetType){
                 case PacketType::WORK_STATUS:
                     $job->numerator = (int)$packet->getArgument(1);
@@ -214,12 +216,12 @@ class Client {
                     $job->result = $job->data;
                     $job->finished = true;
                     $job->triggerCallback($packetType == PacketType::WORK_COMPLETE ? 'complete' : 'warning');
-                    unset($this->jobList[$handle]);
+                    unset($this->jobList[$index]);
                     break;
                 case PacketType::WORK_FAIL:
                     $job->finished = true;
                     $job->triggerCallback('fail');
-                    unset($this->jobList[$handle]);
+                    unset($this->jobList[$index]);
                     break;
                 case PacketType::WORK_DATA:
                     $job->data = $packet->getArgument(1);
@@ -231,25 +233,19 @@ class Client {
 
     private function updateStatusDetails(Packet $packet){
         $handle = $packet->getArgument(0);
-        $found = false;
-        $statusDetails = null;
-        foreach ($this->statusList as $idx => $statusDetails){
-            if ($statusDetails->jobHandle === $handle){
-                unset($this->statusList[$idx]);
-                $found = true;
-                break;
-            }
-        }
-
-        if (!$found){
+        $entry = $this->findHandleInList($this->statusList, $handle);
+        if (!$entry){
             return;
         }
 
+        /** @var StatusDetails $statusDetails */
+        [$index, $statusDetails] = $entry;
         $statusDetails->isKnown = (bool)(int)$packet->getArgument(1);
         $statusDetails->isRunning = (bool)(int)$packet->getArgument(2);
         $statusDetails->numerator = (int)$packet->getArgument(3);
         $statusDetails->denominator = (int)$packet->getArgument(4);
         $statusDetails->resultReceived = true;
+        unset($this->statusList[$index]);
     }
 
     private function getSubmitJobType(int $priority, bool $background) : int{
@@ -292,10 +288,10 @@ class Client {
         });
     }
 
-    private function getJobByHandle($handle) : ?JobDetails{
-        foreach ($this->jobList as $details){
+    private function findHandleInList(array $list, string $handle) : ?array{
+        foreach ($list as $index => $details){
             if ($details->jobHandle === $handle){
-                return $details;
+                return [$index, $details];
             }
         }
 
