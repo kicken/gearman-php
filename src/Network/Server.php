@@ -33,6 +33,11 @@ class Server {
         $this->flush();
     }
 
+    public function disconnect(){
+        $this->loop->removeReadStream($this->stream);
+        fclose($this->stream);
+    }
+
     public function onPacketReceived(callable $handler) : void{
         $this->packetHandler = $handler;
     }

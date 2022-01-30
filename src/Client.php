@@ -171,12 +171,22 @@ class Client {
         });
     }
 
+    private function packetReceived(Packet $packet){
+        $this->processPacket($packet);
+        if (!$this->statusList && !$this->jobList){
+            $this->serverPool->disconnect();
+        }
+    }
+
     private function processPacket(Packet $packet){
         $handle = $packet->getArgument(0);
         switch ($packet->getType()){
             case PacketType::JOB_CREATED:
-                $lastJob = end($this->jobList);
+                $lastJob = array_pop($this->jobList);
                 $lastJob->jobHandle = $handle;
+                if (!$lastJob->background){
+                    $this->jobList[] = $lastJob;
+                }
                 break;
             case PacketType::WORK_DATA:
             case PacketType::WORK_WARNING:
@@ -268,7 +278,7 @@ class Client {
                 $this->serverPool->connect(function(array $serverList) use ($resolve){
                     foreach ($serverList as $server){
                         $server->onPacketReceived(function(Server $server, Packet $packet){
-                            $this->processPacket($packet);
+                            $this->packetReceived($packet);
                         });
                     }
                 });
