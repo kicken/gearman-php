@@ -28,6 +28,7 @@ namespace Kicken\Gearman;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\JobDetails;
+use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Job\WorkerJob;
 use Kicken\Gearman\Network\Server;
 use Kicken\Gearman\Network\ServerPool;
@@ -100,12 +101,14 @@ class Worker {
      * Main script must run the main loop at some future point.
      */
     public function workAsync() : void{
-        $this->serverPool->connect(function(Server $server){
-            $server->onPacketReceived(function(Server $server, Packet $packet){
-                $this->processPacket($server, $packet);
-            });
-            $this->registerFunctionsWithServer($server);
-            $this->grabJob($server);
+        $this->serverPool->connect(function(array $serverList){
+            foreach ($serverList as $server){
+                $server->onPacketReceived(function(Server $server, Packet $packet){
+                    $this->processPacket($server, $packet);
+                });
+                $this->registerFunctionsWithServer($server);
+                $this->grabJob($server);
+            }
         });
     }
 
@@ -186,9 +189,9 @@ class Worker {
 
     private function createJobDetails(Packet $packet) : JobDetails{
         if ($packet->getType() === PacketType::JOB_ASSIGN){
-            $details = new JobDetails($packet->getArgument(1), $packet->getArgument(2), null, null);
+            $details = new JobDetails($packet->getArgument(1), $packet->getArgument(2), null, JobPriority::NORMAL);
         } else {
-            $details = new JobDetails($packet->getArgument(1), $packet->getArgument(3), $packet->getArgument(2), null);
+            $details = new JobDetails($packet->getArgument(1), $packet->getArgument(3), $packet->getArgument(2), JobPriority::NORMAL);
         }
 
         $details->jobHandle = $packet->getArgument(0);

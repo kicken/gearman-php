@@ -24,13 +24,15 @@
 
 namespace Kicken\Gearman\Job;
 
+use Kicken\Gearman\Network\Server;
+
 /**
  * Provides information regarding a job to a client.
  *
  * @package Kicken\Gearman\Job
  */
-class ClientJob {
-    private JobDetails $jobDetails;
+abstract class ClientJob {
+    protected JobDetails $jobDetails;
 
     public function __construct(JobDetails $jobDetails){
         $this->jobDetails = $jobDetails;
@@ -46,10 +48,6 @@ class ClientJob {
 
     public function getFunction() : string{
         return $this->jobDetails->function;
-    }
-
-    public function isBackgroundJob() : bool{
-        return $this->jobDetails->background;
     }
 
     public function isFinished() : bool{
@@ -82,49 +80,5 @@ class ClientJob {
 
     public function getData() : string{
         return $this->jobDetails->data;
-    }
-
-    public function onStatus(callable $fn) : self{
-        $this->addCallback('status', $fn);
-
-        return $this;
-    }
-
-    public function onData(callable $fn) : self{
-        $this->addCallback('data', $fn);
-
-        return $this;
-    }
-
-    public function onWarning(callable $fn) : self{
-        $this->addCallback('warning', $fn);
-
-        return $this;
-    }
-
-    public function onComplete(callable $fn) : self{
-        $this->addCallback('complete', $fn);
-
-        return $this;
-    }
-
-    public function onFail(callable $fn) : self{
-        $this->addCallback('fail', $fn);
-
-        return $this;
-    }
-
-    public function onException(callable $fn) : self{
-        $this->addCallback('exception', $fn);
-
-        return $this;
-    }
-
-    private function addCallback($type, $fn){
-        $wrapper = function() use ($fn){
-            return call_user_func($fn, $this);
-        };
-
-        $this->jobDetails->addCallback($type, $wrapper);
     }
 }

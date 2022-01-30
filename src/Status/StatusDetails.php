@@ -31,24 +31,14 @@ namespace Kicken\Gearman\Status;
  * @package Kicken\Gearman\Status
  */
 class StatusDetails {
-    public bool $resultReceived = false;
     public string $jobHandle;
+    public bool $resultReceived = false;
     public bool $isKnown = false;
     public bool $isRunning = false;
     public int $numerator = 0;
     public int $denominator = 0;
-    /** @var callable[] */
-    public array $callbacks = [];
 
-    public function addCallback($type, callable $fn){
-        $this->callbacks[$type][] = $fn;
-    }
-
-    public function triggerCallback($type){
-        if (isset($this->callbacks[$type])){
-            foreach ($this->callbacks[$type] as $fn){
-                call_user_func($fn);
-            }
-        }
+    public function __construct(string $jobHandle){
+        $this->jobHandle = $jobHandle;
     }
 }

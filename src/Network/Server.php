@@ -2,6 +2,7 @@
 
 namespace Kicken\Gearman\Network;
 
+use Kicken\Gearman\Exception\UnexpectedPacketException;
 use Kicken\Gearman\Protocol\Packet;
 use React\EventLoop\LoopInterface;
 
@@ -22,6 +23,7 @@ class Server {
         stream_set_blocking($this->stream, false);
         $this->loop->addReadStream($this->stream, function(){
             $this->buffer();
+            $this->emitPacket($this->parsePacket());
         });
     }
 
@@ -54,10 +56,16 @@ class Server {
                 $this->readBuffer .= $data;
             }
         } while ($data);
+    }
 
+    private function parsePacket() : Packet{
         $packet = Packet::fromString($this->readBuffer);
         $this->readBuffer = '';
 
+        return $packet;
+    }
+
+    private function emitPacket(Packet $packet){
         if ($this->packetHandler){
             call_user_func($this->packetHandler, $this, $packet);
         }

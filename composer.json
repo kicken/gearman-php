@@ -15,6 +15,7 @@
   },
   "require": {
     "php": ">=7.4.0",
-    "react/event-loop": "^1.0"
+    "react/event-loop": "^1.0",
+    "react/promise": "^2.8.0"
   }
 }

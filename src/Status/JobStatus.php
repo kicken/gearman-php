@@ -40,10 +40,6 @@ class JobStatus {
         $this->statusDetails = $details;
     }
 
-    public function isResultReceived() : bool{
-        return $this->statusDetails->resultReceived;
-    }
-
     public function getJobHandle() : string{
         return $this->statusDetails->jobHandle;
     }
@@ -70,13 +66,5 @@ class JobStatus {
         }
 
         return $this->statusDetails->numerator / $this->statusDetails->denominator;
-    }
-
-    public function onComplete(callable $fn){
-        $wrapper = function() use ($fn){
-            return call_user_func($fn, $this);
-        };
-
-        $this->statusDetails->addCallback('complete', $wrapper);
     }
 }

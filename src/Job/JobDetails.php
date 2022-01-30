@@ -25,13 +25,15 @@
 namespace Kicken\Gearman\Job;
 
 
+use Kicken\Gearman\Network\Server;
+
 /**
  * Used to share data between the Client and ClientJob classes.
  *
  * @package Kicken\Gearman\Job
  */
 class JobDetails {
-    public string $jobHandle;
+    public ?string $jobHandle = null;
     public string $unique;
     public string $function;
     public bool $background = false;
@@ -40,12 +42,12 @@ class JobDetails {
     public string $workload;
     public int $numerator = 0;
     public int $denominator = 0;
-    public string $result;
-    public string $data;
+    public ?string $result = null;
+    public ?string $data = null;
     /** @var callable[] */
     public array $callbacks = [];
 
-    public function __construct(string $function, string $workload, string $unique, int $priority){
+    public function __construct(string $function, string $workload, ?string $unique, int $priority){
         $this->function = $function;
         $this->workload = $workload;
         $this->unique = $unique ?: uniqid();
