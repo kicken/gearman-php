@@ -25,8 +25,8 @@
 namespace Kicken\Gearman\Exception;
 
 
-class UnexpectedPacketException extends \RuntimeException {
+class InsufficientDataException extends \RuntimeException {
     public function __construct(){
-        parent::__construct('Unexpected packet data received');
+        parent::__construct('Not enough data to parse packet.');
     }
 }

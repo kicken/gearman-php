@@ -11,7 +11,10 @@
   "autoload": {
     "psr-4": {
       "Kicken\\Gearman\\": "src/"
-    }
+    },
+    "files": [
+      "src/utility.php"
+    ]
   },
   "require": {
     "php": ">=7.4.0",
