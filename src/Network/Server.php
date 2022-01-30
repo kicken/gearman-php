@@ -3,6 +3,7 @@
 namespace Kicken\Gearman\Network;
 
 use Kicken\Gearman\Exception\NotConnectedException;
+use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use React\EventLoop\LoopInterface;
@@ -11,8 +12,8 @@ class Server {
     /** @var resource */
     private $stream;
 
-    /** @var callable */
-    private $packetHandler = null;
+    /** @var PacketHandler[] */
+    private array $handlerList = [];
 
     private LoopInterface $loop;
     private string $writeBuffer = '';
@@ -35,13 +36,25 @@ class Server {
     }
 
     public function disconnect(){
-        $this->loop->removeReadStream($this->stream);
-        fclose($this->stream);
-        $this->stream = null;
+        if ($this->stream){
+            $this->loop->removeReadStream($this->stream);
+            fclose($this->stream);
+            $this->stream = null;
+        }
     }
 
-    public function onPacketReceived(callable $handler) : void{
-        $this->packetHandler = $handler;
+    public function addPacketHandler(PacketHandler $handler){
+        $this->handlerList[] = $handler;
+    }
+
+    public function removePacketHandler(PacketHandler $handler){
+        $key = array_search($handler, $this->handlerList, true);
+        if ($key !== false){
+            unset($this->handlerList[$key]);
+            if (!$this->handlerList){
+                $this->disconnect();
+            }
+        }
     }
 
     private function flush() : void{
@@ -71,10 +84,11 @@ class Server {
     }
 
     private function emitPackets(){
-        if ($this->packetHandler){
-            while ($packet = $this->readBuffer->readPacket()){
-                call_user_func($this->packetHandler, $this, $packet);
-            }
+        while ($packet = $this->readBuffer->readPacket()){
+            $handlerQueue = $this->handlerList;
+            do {
+                $handler = array_shift($handlerQueue);
+            } while ($handler && !$handler->handlePacket($this, $packet));
         }
     }
 }

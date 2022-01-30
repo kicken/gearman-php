@@ -27,9 +27,8 @@ namespace Kicken\Gearman;
 
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
-use Kicken\Gearman\Job\Data\WorkJobData;
-use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Job\WorkerJob;
+use Kicken\Gearman\Network\PacketHandler\GrabJobHandler;
 use Kicken\Gearman\Network\Server;
 use Kicken\Gearman\Network\ServerPool;
 use Kicken\Gearman\Protocol\Packet;
@@ -103,9 +102,6 @@ class Worker {
     public function workAsync() : void{
         $this->serverPool->connect(function(array $serverList){
             foreach ($serverList as $server){
-                $server->onPacketReceived(function(Server $server, Packet $packet){
-                    $this->processPacket($server, $packet);
-                });
                 $this->registerFunctionsWithServer($server);
                 $this->grabJob($server);
             }
@@ -133,40 +129,19 @@ class Worker {
 
     private function grabJob(Server $server) : void{
         if (!$this->stop){
-            $packet = new Packet(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
-            $server->writePacket($packet);
+            (new GrabJobHandler())->grabJob($server)->then(function(WorkerJob $job) use ($server){
+                $this->processJob($job);
+                $this->grabJob($server);
+            });
         }
     }
 
-    private function sleep(Server $server) : void{
-        $packet = new Packet(PacketMagic::REQ, PacketType::PRE_SLEEP);
-        $server->writePacket($packet);
-    }
-
-    private function processPacket(Server $server, Packet $packet) : void{
-        switch ($packet->getType()){
-            case PacketType::NO_JOB:
-                $this->sleep($server);
-                break;
-            case PacketType::JOB_ASSIGN:
-            case PacketType::JOB_ASSIGN_UNIQ:
-                $this->processJob($server, $packet);
-                $this->grabJob($server);
-                break;
-            case PacketType::NOOP:
-                $this->grabJob($server);
-                break;
-        }
-    }
-
-    private function processJob(Server $server, Packet $packet) : void{
-        $workerName = $packet->getArgument(1);
-        if (!isset($this->workerList[$workerName])){
+    private function processJob(WorkerJob $job) : void{
+        if (!isset($this->workerList[$job->getFunction()])){
             throw new NoRegisteredFunctionException;
         }
 
-        $worker = $this->workerList[$workerName]['callback'];
-        $job = $this->createWorkerJob($server, $packet);
+        $worker = $this->workerList[$job->getFunction()]['callback'];
         try {
             $result = call_user_func($worker, $job);
             if ($result === false){
@@ -179,21 +154,5 @@ class Worker {
         } catch (\Exception $e){
             $job->sendException(get_class($e) . ': ' . $e->getMessage());
         }
-    }
-
-    private function createWorkerJob(Server $server, Packet $packet) : WorkerJob{
-        $jobDetails = $this->createJobDetails($packet);
-
-        return new WorkerJob($server, $jobDetails);
-    }
-
-    private function createJobDetails(Packet $packet) : WorkJobData{
-        if ($packet->getType() === PacketType::JOB_ASSIGN){
-            $details = new WorkJobData($packet->getArgument(0), $packet->getArgument(1), null, JobPriority::NORMAL, $packet->getArgument(2));
-        } else {
-            $details = new WorkJobData($packet->getArgument(0), $packet->getArgument(1), $packet->getArgument(2), JobPriority::NORMAL, $packet->getArgument(3));
-        }
-
-        return $details;
     }
 }

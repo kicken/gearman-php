@@ -112,13 +112,6 @@ class ServerPool {
         }
     }
 
-    public function disconnect(){
-        foreach ($this->connectedServerList as $server){
-            $server->disconnect();
-        }
-        $this->connectedServerList = [];
-    }
-
     public function isConnected() : bool{
         return count($this->connectedServerList) > 0;
     }
