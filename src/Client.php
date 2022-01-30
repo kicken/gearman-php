@@ -173,9 +173,11 @@ class Client {
 
     private function packetReceived(Packet $packet){
         $this->processPacket($packet);
-        if (!$this->statusList && !$this->jobList){
-            $this->serverPool->disconnect();
-        }
+        $this->loop->futureTick(function(){
+            if (!$this->statusList && !$this->jobList){
+                $this->serverPool->disconnect();
+            }
+        });
     }
 
     private function processPacket(Packet $packet){
