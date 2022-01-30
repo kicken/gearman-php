@@ -26,7 +26,6 @@ namespace Kicken\Gearman\Job;
 
 use Kicken\Gearman\Job\Data\ClientJobData;
 use Kicken\Gearman\Job\Data\JobData;
-use Kicken\Gearman\Job\Data\WorkJobData;
 
 /**
  * Provides information regarding a job to a client.

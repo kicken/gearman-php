@@ -2,6 +2,7 @@
 
 namespace Kicken\Gearman\Network;
 
+use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use React\EventLoop\LoopInterface;
@@ -36,6 +37,7 @@ class Server {
     public function disconnect(){
         $this->loop->removeReadStream($this->stream);
         fclose($this->stream);
+        $this->stream = null;
     }
 
     public function onPacketReceived(callable $handler) : void{
@@ -43,6 +45,10 @@ class Server {
     }
 
     private function flush() : void{
+        if (!$this->stream){
+            throw new NotConnectedException();
+        }
+
         $written = fwrite($this->stream, $this->writeBuffer);
         if ($written === strlen($this->writeBuffer)){
             $this->writeBuffer = '';

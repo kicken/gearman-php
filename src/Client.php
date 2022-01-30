@@ -156,7 +156,7 @@ class Client {
                 $checkForHandle = function() use ($jobDetails, $resolve, &$checkForHandle){
                     if ($jobDetails->jobHandle){
                         if ($jobDetails->background){
-                            $resolve(new ClientBackgroundJob($jobDetails));
+                            $resolve(new ClientBackgroundJob($this, $jobDetails));
                         } else {
                             $resolve(new ClientForegroundJob($jobDetails));
                         }
