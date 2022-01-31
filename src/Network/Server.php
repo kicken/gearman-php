@@ -134,6 +134,10 @@ class Server {
     }
 
     private function isStreamConnected() : bool{
+        if (!$this->stream){
+            return false;
+        }
+
         $r = $e = [];
         $w = [$this->stream];
 
