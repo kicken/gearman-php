@@ -51,6 +51,7 @@ class Client {
     private array $serverList;
 
     private ?Server $connectedServer = null;
+    private ?PromiseInterface $pendingConnectionAttempt = null;
 
     /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
@@ -136,6 +137,8 @@ class Client {
     private function connect() : PromiseInterface{
         if ($this->connectedServer && $this->connectedServer->isConnected()){
             return resolve($this->connectedServer);
+        } else if ($this->pendingConnectionAttempt){
+            return $this->pendingConnectionAttempt;
         } else if (!$this->serverList){
             throw new EmptyServerListException();
         }
@@ -152,8 +155,9 @@ class Client {
         };
 
 
-        return $firstServer->connect()->then(null, $failureHandler)->then(function(Server $server){
+        return $this->pendingConnectionAttempt = $firstServer->connect()->then(null, $failureHandler)->then(function(Server $server){
             $this->connectedServer = $server;
+            $this->pendingConnectionAttempt = null;
 
             return $server;
         });
