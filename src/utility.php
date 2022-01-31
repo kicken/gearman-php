@@ -2,6 +2,9 @@
 
 namespace Kicken\Gearman;
 
+use Kicken\Gearman\Network\Server;
+use React\EventLoop\LoopInterface;
+
 /**
  * Convert an integer from machine to big endian format
  *
@@ -24,4 +27,24 @@ function fromBigEndian(string $data) : int{
     $data = unpack('Nnum', $data);
 
     return $data['num'];
+}
+
+/**
+ * @param string|string[]|Server|Server[] $serverList
+ *
+ * @return Server[]
+ */
+function mapToServerObjects($serverList, LoopInterface $loop) : array{
+    if (!is_array($serverList)){
+        $serverList = [$serverList];
+    }
+
+    return array_map(function($item) use ($loop){
+        if (is_string($item)){
+            return new Server($item, null, $loop);
+        } else if ($item instanceof Server){
+            return $item;
+        }
+        throw new \InvalidArgumentException();
+    }, $serverList);
 }

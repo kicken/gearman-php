@@ -30,7 +30,6 @@ use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\WorkerJob;
 use Kicken\Gearman\Network\PacketHandler\GrabJobHandler;
 use Kicken\Gearman\Network\Server;
-use Kicken\Gearman\Network\ServerPool;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -43,7 +42,8 @@ use React\EventLoop\LoopInterface;
  * @package Kicken\Gearman
  */
 class Worker {
-    private ServerPool $serverPool;
+    /** @var Server[] */
+    private array $serverList;
     private LoopInterface $loop;
     private array $workerList = [];
     private bool $stop = false;
@@ -51,17 +51,12 @@ class Worker {
     /**
      * Create a new Gearman Worker to process jobs submitted to the server by clients.
      *
-     * @param string|string[] $serverList The server(s) to connect to.
-     * @param ?int $connectTimeout How long to wait for a server connection to establish.
+     * @param string|string[]|Server|Server[] $serverList The server(s) to connect to.
      * @param ?LoopInterface $loop Event loop implementation to use
      */
-    public function __construct($serverList = '127.0.0.1:4730', int $connectTimeout = null, LoopInterface $loop = null){
-        if (!is_array($serverList)){
-            $serverList = [$serverList];
-        }
-
+    public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
         $this->loop = $loop ?? Loop::get();
-        $this->serverPool = new ServerPool($serverList, $connectTimeout ?? ini_get('default_socket_timeout'), $this->loop);
+        $this->serverList = mapToServerObjects($serverList, $this->loop);
     }
 
     /**
@@ -100,12 +95,12 @@ class Worker {
      * Main script must run the main loop at some future point.
      */
     public function workAsync() : void{
-        $this->serverPool->connect(function(array $serverList){
-            foreach ($serverList as $server){
+        foreach ($this->serverList as $server){
+            $server->connect()->then(function(Server $server){
                 $this->registerFunctionsWithServer($server);
                 $this->grabJob($server);
-            }
-        });
+            });
+        }
     }
 
     /**
@@ -128,7 +123,7 @@ class Worker {
     }
 
     private function grabJob(Server $server) : void{
-        if (!$this->stop){
+        if (!$this->stop && $server->isConnected()){
             (new GrabJobHandler())->grabJob($server)->then(function(WorkerJob $job) use ($server){
                 $this->processJob($job);
                 $this->grabJob($server);

@@ -24,6 +24,8 @@
 
 namespace Kicken\Gearman;
 
+use Kicken\Gearman\Exception\CouldNotConnectException;
+use Kicken\Gearman\Exception\EmptyServerListException;
 use Kicken\Gearman\Job\ClientBackgroundJob;
 use Kicken\Gearman\Job\ClientForegroundJob;
 use Kicken\Gearman\Job\ClientJob;
@@ -33,11 +35,11 @@ use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Job\JobStatus;
 use Kicken\Gearman\Network\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Network\PacketHandler\JobStatusHandler;
-use Kicken\Gearman\Network\ServerPool;
+use Kicken\Gearman\Network\Server;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
-use React\Promise\Promise;
 use React\Promise\PromiseInterface;
+use function React\Promise\resolve;
 
 /**
  * A class for submitting jobs to a Gearman server.
@@ -45,21 +47,18 @@ use React\Promise\PromiseInterface;
  * @package Kicken\Gearman
  */
 class Client {
-    private LoopInterface $loop;
-    private ServerPool $serverPool;
+    /** @var Server[] */
+    private array $serverList;
+
+    private ?Server $connectedServer = null;
 
     /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
      *
-     * @param string|string[] $serverList The server(s) to connect to.
+     * @param string|string[]|Server|Server[] $serverList The server(s) to connect to.
      */
-    public function __construct($serverList = '127.0.0.1:4730', int $connectTimeout = null, LoopInterface $loop = null){
-        if (!is_array($serverList)){
-            $serverList = [$serverList];
-        }
-
-        $this->loop = $loop ?? Loop::get();
-        $this->serverPool = new ServerPool($serverList, $connectTimeout ?? ini_get('default_socket_timeout'), $this->loop);
+    public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
+        $this->serverList = mapToServerObjects($serverList, $loop ?? Loop::get());
     }
 
     /**
@@ -76,8 +75,8 @@ class Client {
     public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = null) : PromiseInterface{
         $jobDetails = new ClientJobData($function, $workload, $unique ?? uniqid(), $priority);
 
-        return $this->connect()->then(function() use ($jobDetails){
-            return $this->createJob($jobDetails);
+        return $this->connect()->then(function(Server $server) use ($jobDetails){
+            return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
             return new ClientForegroundJob($jobDetails);
         });
@@ -99,8 +98,8 @@ class Client {
         $jobDetails = new ClientJobData($function, $workload, $unique ?? uniqid(), $priority);
         $jobDetails->background = true;
 
-        return $this->connect()->then(function() use ($jobDetails){
-            return $this->createJob($jobDetails);
+        return $this->connect()->then(function(Server $server) use ($jobDetails){
+            return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
             return new ClientBackgroundJob($this, $jobDetails);
         });
@@ -117,9 +116,7 @@ class Client {
     public function getJobStatus(string $handle) : PromiseInterface{
         $data = new JobStatusData($handle);
 
-        return $this->connect()->then(function() use ($data){
-            $server = $this->serverPool->randomServer();
-
+        return $this->connect()->then(function(Server $server) use ($data){
             return (new JobStatusHandler($data))->waitForResult($server);
         })->then(function() use ($data){
             return new JobStatus($data);
@@ -127,25 +124,38 @@ class Client {
     }
 
     /**
+     * @param Server $server
      * @param ClientJobData $jobDetails
      *
      * @return PromiseInterface<ClientJob>
      */
-    private function createJob(ClientJobData $jobDetails) : PromiseInterface{
-        $server = $this->serverPool->randomServer();
-
+    private function createJob(Server $server, ClientJobData $jobDetails) : PromiseInterface{
         return (new CreateJobHandler($jobDetails))->createJob($server);
     }
 
     private function connect() : PromiseInterface{
-        return new Promise(function($resolve){
-            if ($this->serverPool->isConnected()){
-                $resolve();
-            } else {
-                $this->serverPool->connect(function() use ($resolve){
-                    $resolve();
-                });
+        if ($this->connectedServer && $this->connectedServer->isConnected()){
+            return resolve($this->connectedServer);
+        } else if (!$this->serverList){
+            throw new EmptyServerListException();
+        }
+
+        $queue = $this->serverList;
+        $firstServer = array_shift($queue);
+        $failureHandler = function() use (&$queue, &$failureHandler){
+            $nextServer = array_shift($queue);
+            if (!$nextServer){
+                throw new CouldNotConnectException();
             }
+
+            return $nextServer->connect()->then(null, $failureHandler);
+        };
+
+
+        return $firstServer->connect()->then(null, $failureHandler)->then(function(Server $server){
+            $this->connectedServer = $server;
+
+            return $server;
         });
     }
 }
