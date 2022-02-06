@@ -20,7 +20,7 @@ class JobStatusHandler implements PacketHandler {
     }
 
     public function handlePacket(Server $server, Packet $packet) : bool{
-        if ($packet->getType() === PacketType::STATUS_RES){
+        if ($packet->getType() === PacketType::STATUS_RES && $packet->getArgument(0) === $this->data->jobHandle){
             $this->data->isKnown = (bool)(int)$packet->getArgument(1);
             $this->data->isRunning = (bool)(int)$packet->getArgument(2);
             $this->data->numerator = (int)$packet->getArgument(3);
