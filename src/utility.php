@@ -31,10 +31,11 @@ function fromBigEndian(string $data) : int{
 
 /**
  * @param string|string[]|Server|Server[] $serverList
+ * @param ?LoopInterface $loop
  *
  * @return Server[]
  */
-function mapToServerObjects($serverList, LoopInterface $loop) : array{
+function mapToServerObjects($serverList, ?LoopInterface $loop) : array{
     if (!is_array($serverList)){
         $serverList = [$serverList];
     }
