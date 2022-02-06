@@ -2,145 +2,20 @@
 
 namespace Kicken\Gearman\Network;
 
-use Kicken\Gearman\Exception\CouldNotConnectException;
-use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\Packet;
-use Kicken\Gearman\Protocol\PacketBuffer;
-use React\EventLoop\Loop;
-use React\EventLoop\LoopInterface;
-use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
-use function React\Promise\reject;
 
-class Server {
-    private string $url;
-    private int $connectTimeout;
-    /** @var resource */
-    private $stream = null;
+interface Server {
+    public function connect() : PromiseInterface;
 
-    /** @var PacketHandler[] */
-    private array $handlerList = [];
+    public function isConnected() : bool;
 
-    private LoopInterface $loop;
-    private string $writeBuffer = '';
-    private PacketBuffer $readBuffer;
+    public function writePacket(Packet $packet) : void;
 
-    public function __construct(string $url, int $connectTimeout = null, LoopInterface $loop = null){
-        $this->url = $url;
-        $this->connectTimeout = $connectTimeout ?? ini_get('default_socket_timeout');
-        $this->loop = $loop ?? Loop::get();
-        $this->readBuffer = new PacketBuffer();
-    }
+    public function disconnect() : void;
 
-    public function connect() : PromiseInterface{
-        $this->stream = stream_socket_client($this->url, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
-        if (!$this->stream){
-            return reject(new CouldNotConnectException());
-        }
+    public function addPacketHandler(PacketHandler $handler) : void;
 
-        $deferred = new Deferred();
-        $timeoutTimer = $this->loop->addTimer($this->connectTimeout, function() use ($deferred){
-            $this->completeConnectionAttempt($deferred);
-        });
-
-        $this->loop->addWriteStream($this->stream, function() use ($deferred, $timeoutTimer){
-            $this->loop->cancelTimer($timeoutTimer);
-            $this->completeConnectionAttempt($deferred);
-        });
-
-        return $deferred->promise();
-    }
-
-    public function isConnected() : bool{
-        return $this->stream !== null;
-    }
-
-    public function writePacket(Packet $packet) : void{
-        $this->writeBuffer .= $packet;
-        $this->flush();
-    }
-
-    public function disconnect(){
-        if ($this->stream){
-            $this->loop->removeReadStream($this->stream);
-            fclose($this->stream);
-            $this->stream = null;
-        }
-    }
-
-    public function addPacketHandler(PacketHandler $handler){
-        $this->handlerList[] = $handler;
-    }
-
-    public function removePacketHandler(PacketHandler $handler){
-        $key = array_search($handler, $this->handlerList, true);
-        if ($key !== false){
-            unset($this->handlerList[$key]);
-            if (!$this->handlerList){
-                $this->disconnect();
-            }
-        }
-    }
-
-    private function flush() : void{
-        if (!$this->stream){
-            throw new NotConnectedException();
-        }
-
-        $written = fwrite($this->stream, $this->writeBuffer);
-        if ($written === strlen($this->writeBuffer)){
-            $this->writeBuffer = '';
-        } else {
-            $this->writeBuffer = substr($this->writeBuffer, $written);
-            $this->loop->addWriteStream($this->stream, function(){
-                $this->loop->removeWriteStream($this->stream);
-                $this->flush();
-            });
-        }
-    }
-
-    private function buffer() : void{
-        do {
-            $data = fread($this->stream, 8192);
-            if ($data){
-                $this->readBuffer->feed($data);
-            }
-        } while ($data);
-    }
-
-    private function emitPackets(){
-        while ($packet = $this->readBuffer->readPacket()){
-            $handlerQueue = $this->handlerList;
-            do {
-                $handler = array_shift($handlerQueue);
-            } while ($handler && !$handler->handlePacket($this, $packet));
-        }
-    }
-
-    private function completeConnectionAttempt(Deferred $deferred){
-        $this->loop->removeWriteStream($this->stream);
-        if ($this->isStreamConnected()){
-            stream_set_blocking($this->stream, false);
-            $this->loop->addReadStream($this->stream, function(){
-                $this->buffer();
-                $this->emitPackets();
-            });
-            $deferred->resolve($this);
-        } else {
-            $this->stream = null;
-            $deferred->reject(new CouldNotConnectException());
-        }
-    }
-
-    private function isStreamConnected() : bool{
-        if (!$this->stream){
-            return false;
-        }
-
-        $r = $e = [];
-        $w = [$this->stream];
-
-        return stream_select($r, $w, $e, 0, 0) === 1;
-    }
+    public function removePacketHandler(PacketHandler $handler) : void;
 }

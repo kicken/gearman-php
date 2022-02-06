@@ -51,12 +51,6 @@ class CreateJobHandler implements PacketHandler {
 
     private function updateJobData(Server $server, Packet $packet){
         switch ($packet->getType()){
-            case PacketType::JOB_CREATED:
-                $this->data->jobHandle = $packet->getArgument(0);
-                if ($this->data->background){
-                    $server->removePacketHandler($this);
-                }
-                break;
             case PacketType::WORK_STATUS:
                 $this->data->numerator = (int)$packet->getArgument(1);
                 $this->data->denominator = (int)$packet->getArgument(2);
@@ -67,22 +61,27 @@ class CreateJobHandler implements PacketHandler {
                 $this->data->triggerCallback('warning');
                 break;
             case PacketType::WORK_COMPLETE:
+                $this->data->result = $packet->getArgument(1);
+                $this->data->finished = true;
+                $this->data->triggerCallback('complete');
+                break;
             case PacketType::WORK_EXCEPTION:
                 $this->data->data = $packet->getArgument(1);
-                $this->data->result = $this->data->data;
                 $this->data->finished = true;
-                $this->data->triggerCallback($packet->getType() == PacketType::WORK_COMPLETE ? 'complete' : 'warning');
-                $server->removePacketHandler($this);
+                $this->data->triggerCallback('exception');
                 break;
             case PacketType::WORK_FAIL:
                 $this->data->finished = true;
                 $this->data->triggerCallback('fail');
-                $server->removePacketHandler($this);
                 break;
             case PacketType::WORK_DATA:
                 $this->data->data = $packet->getArgument(1);
                 $this->data->triggerCallback('data');
                 break;
+        }
+
+        if ($this->data->finished){
+            $server->removePacketHandler($this);
         }
     }
 

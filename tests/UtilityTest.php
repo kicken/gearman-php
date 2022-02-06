@@ -2,7 +2,7 @@
 
 namespace Kicken\Gearman\Test;
 
-use Kicken\Gearman\Network\Server;
+use Kicken\Gearman\Network\GearmanServer;
 use PHPUnit\Framework\TestCase;
 use function Kicken\Gearman\fromBigEndian;
 use function Kicken\Gearman\mapToServerObjects;
@@ -26,15 +26,15 @@ class UtilityTest extends TestCase {
         $mapped = mapToServerObjects($serverList, null);
 
         $this->assertCount(1, $mapped);
-        $this->assertInstanceOf(Server::class, $mapped[0]);
+        $this->assertInstanceOf(GearmanServer::class, $mapped[0]);
     }
 
     public function testMapServerArrayToServerArray(){
-        $serverList = [new Server('127.0.0.1:4730')];
+        $serverList = [new GearmanServer('127.0.0.1:4730')];
         $mapped = mapToServerObjects($serverList, null);
 
         $this->assertCount(1, $mapped);
-        $this->assertInstanceOf(Server::class, $mapped[0]);
+        $this->assertInstanceOf(GearmanServer::class, $mapped[0]);
     }
 
     public function testMapServerWithInvalidType(){

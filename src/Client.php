@@ -102,7 +102,7 @@ class Client {
         return $this->connect()->then(function(Server $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
-            return new ClientBackgroundJob($this, $jobDetails);
+            return new ClientBackgroundJob($jobDetails, $this);
         });
     }
 
