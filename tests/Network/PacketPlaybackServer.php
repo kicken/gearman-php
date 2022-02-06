@@ -2,6 +2,7 @@
 
 namespace Kicken\Gearman\Test\Network;
 
+use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Network\Server;
 use Kicken\Gearman\Protocol\Packet;
@@ -13,26 +14,33 @@ class PacketPlaybackServer implements Server {
     /** @var PacketHandler[] */
     private array $handlerList = [];
     private array $sequence;
+    private bool $isConnected = false;
     private PacketBuffer $writeBuffer;
 
-    public function __construct(array $packetSequence){
+    public function __construct(array $packetSequence = []){
         $this->sequence = $packetSequence;
         $this->writeBuffer = new PacketBuffer();
     }
 
     public function connect() : PromiseInterface{
+        $this->isConnected = true;
+
         return resolve($this);
     }
 
     public function isConnected() : bool{
-        return true;
+        return $this->isConnected;
     }
 
     public function writePacket(Packet $packet) : void{
+        if (!$this->isConnected()){
+            throw new NotConnectedException();
+        }
         $this->writeBuffer->feed($packet);
     }
 
     public function disconnect() : void{
+        $this->isConnected = false;
     }
 
     public function addPacketHandler(PacketHandler $handler) : void{
@@ -43,6 +51,10 @@ class PacketPlaybackServer implements Server {
         $index = array_search($handler, $this->handlerList, true);
         if ($index !== false){
             unset($this->handlerList[$index]);
+        }
+
+        if (!$this->handlerList){
+            $this->disconnect();
         }
     }
 

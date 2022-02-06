@@ -3,6 +3,7 @@
 namespace Kicken\Gearman;
 
 use Kicken\Gearman\Network\GearmanServer;
+use Kicken\Gearman\Network\Server;
 use React\EventLoop\LoopInterface;
 
 /**
@@ -30,7 +31,7 @@ function fromBigEndian(string $data) : int{
 }
 
 /**
- * @param string|string[]|GearmanServer|GearmanServer[] $serverList
+ * @param string|string[]|Server|Server[] $serverList
  * @param ?LoopInterface $loop
  *
  * @return GearmanServer[]
@@ -43,7 +44,7 @@ function mapToServerObjects($serverList, ?LoopInterface $loop) : array{
     return array_map(function($item) use ($loop){
         if (is_string($item)){
             return new GearmanServer($item, null, $loop);
-        } else if ($item instanceof GearmanServer){
+        } else if ($item instanceof Server){
             return $item;
         }
         throw new \InvalidArgumentException();

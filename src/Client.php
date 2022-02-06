@@ -69,12 +69,12 @@ class Client {
      * @param string $function The function to be run.
      * @param string $workload Data for the function to operate on.
      * @param int $priority One of the JobPriority constants.
-     * @param ?string $unique A unique ID for the job.
+     * @param string $unique A unique ID for the job.
      *
      * @return PromiseInterface<ClientJob>
      */
-    public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = null) : PromiseInterface{
-        $jobDetails = new ClientJobData($function, $workload, $unique ?? uniqid(), $priority);
+    public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
+        $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
 
         return $this->connect()->then(function(Server $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
@@ -91,12 +91,12 @@ class Client {
      * @param string $function The function to be run.
      * @param string $workload Data for the function to operate on.
      * @param int $priority One of the JobPriority constants.
-     * @param ?string $unique A unique ID for the job.
+     * @param string $unique A unique ID for the job.
      *
      * @return PromiseInterface<Clientjob> The job handle assigned.
      */
-    public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = null) : PromiseInterface{
-        $jobDetails = new ClientJobData($function, $workload, $unique ?? uniqid(), $priority);
+    public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
+        $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
         $jobDetails->background = true;
 
         return $this->connect()->then(function(Server $server) use ($jobDetails){

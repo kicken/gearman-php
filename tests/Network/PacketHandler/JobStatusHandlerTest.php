@@ -20,8 +20,10 @@ class JobStatusHandlerTest extends TestCase {
 
         $data = new JobStatusData('H:test:1');
         $handler = new JobStatusHandler($data);
-        $handler->waitForResult($server);
-        $server->playback();
+        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler){
+            $handler->waitForResult($server);
+            $server->playback();
+        });
 
         $this->assertTrue($server->hasHandler($handler));
     }
@@ -36,10 +38,13 @@ class JobStatusHandlerTest extends TestCase {
         $handler = new JobStatusHandler($data);
 
         $statusReceived = null;
-        $handler->waitForResult($server)->then(function() use (&$statusReceived, $data){
-            $statusReceived = new JobStatus($data);
+        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler, &$statusReceived, $data){
+            $handler->waitForResult($server)->then(function() use (&$statusReceived, $data){
+                $statusReceived = new JobStatus($data);
+            });
+
+            $server->playback();
         });
-        $server->playback();
 
         $this->assertInstanceOf(JobStatus::class, $statusReceived);
         $this->assertEquals('H:test:1', $statusReceived->getJobHandle());
@@ -61,10 +66,12 @@ class JobStatusHandlerTest extends TestCase {
         $handler = new JobStatusHandler($data);
 
         $statusReceived = null;
-        $handler->waitForResult($server)->then(function() use (&$statusReceived, $data){
-            $statusReceived = new JobStatus($data);
+        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler, &$statusReceived, $data){
+            $handler->waitForResult($server)->then(function() use (&$statusReceived, $data){
+                $statusReceived = new JobStatus($data);
+            });
+            $server->playback();
         });
-        $server->playback();
 
         $this->assertInstanceOf(JobStatus::class, $statusReceived);
         $this->assertEquals('H:test:1', $statusReceived->getJobHandle());

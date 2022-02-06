@@ -16,11 +16,14 @@ class GrabJobHandlerTest extends TestCase {
         $server = new PacketPlaybackServer([
             new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
         ]);
-        $handler = new GrabJobHandler();
-        $handler->grabJob($server);
-        $server->playback();
 
-        $this->expectNotToPerformAssertions();
+        $handler = new GrabJobHandler();
+        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler){
+            $handler->grabJob($server);
+            $server->playback();
+        });
+
+        $this->assertTrue($server->hasHandler($handler));
     }
 
     public function testGrabJobSuccessful(){
@@ -28,14 +31,16 @@ class GrabJobHandlerTest extends TestCase {
             new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, ['H:test:1', 'reverse', 'uniq1', 'test'])
         ]);
-        $handler = new GrabJobHandler();
 
+        $handler = new GrabJobHandler();
         $jobReceived = null;
-        $handler->grabJob($server)->then(function(WorkerJob $job) use (&$jobReceived){
-            $jobReceived = $job;
+        $server->connect()->then(function(PacketPlaybackServer $server) use (&$jobReceived, $handler){
+            $handler->grabJob($server)->then(function(WorkerJob $job) use (&$jobReceived){
+                $jobReceived = $job;
+            });
+            $server->playback();
         });
 
-        $server->playback();
         $this->assertInstanceOf(WorkerJob::class, $jobReceived);
         $this->assertEquals('reverse', $jobReceived->getFunction());
         $this->assertEquals('uniq1', $jobReceived->getUniqueId());
@@ -50,9 +55,11 @@ class GrabJobHandlerTest extends TestCase {
             , new IncomingPacket(PacketMagic::REQ, PacketType::PRE_SLEEP)
         ]);
         $handler = new GrabJobHandler();
-        $handler->grabJob($server);
+        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler){
+            $handler->grabJob($server);
+            $server->playback();
+        });
 
-        $server->playback();
         $this->expectNotToPerformAssertions();
     }
 
@@ -67,11 +74,14 @@ class GrabJobHandlerTest extends TestCase {
         ]);
         $handler = new GrabJobHandler();
         $jobReceived = null;
-        $handler->grabJob($server)->then(function(WorkerJob $job) use (&$jobReceived){
-            $jobReceived = $job;
+
+        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler, &$jobReceived){
+            $handler->grabJob($server)->then(function(WorkerJob $job) use (&$jobReceived){
+                $jobReceived = $job;
+            });
+            $server->playback();
         });
 
-        $server->playback();
         $this->assertInstanceOf(WorkerJob::class, $jobReceived);
         $this->assertEquals('reverse', $jobReceived->getFunction());
         $this->assertEquals('uniq1', $jobReceived->getUniqueId());
