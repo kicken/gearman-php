@@ -4,7 +4,7 @@ namespace Kicken\Gearman\Test\Network;
 
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
-use React\Promise\PromiseInterface;
+use React\Promise\ExtendedPromiseInterface;
 
 class AutoPlaybackServer extends PacketPlaybackServer {
     private LoopInterface $loop;
@@ -14,7 +14,8 @@ class AutoPlaybackServer extends PacketPlaybackServer {
         $this->loop = $loop ?? Loop::get();
     }
 
-    public function connect() : PromiseInterface{
+    public function connect() : ExtendedPromiseInterface{
+        /** @noinspection PhpIncompatibleReturnTypeInspection */
         return parent::connect()->then(function(){
             $this->loop->futureTick(function(){
                 $this->playback();

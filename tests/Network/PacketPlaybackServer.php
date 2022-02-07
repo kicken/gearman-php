@@ -9,6 +9,7 @@ use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use React\Promise\ExtendedPromiseInterface;
 use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
@@ -24,7 +25,7 @@ class PacketPlaybackServer implements Server {
         $this->writeBuffer = new PacketBuffer();
     }
 
-    public function connect() : PromiseInterface{
+    public function connect() : ExtendedPromiseInterface{
         $this->isConnected = true;
 
         return resolve($this);
