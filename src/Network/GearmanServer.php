@@ -138,9 +138,12 @@ class GearmanServer implements Server {
             return false;
         }
 
-        $r = $e = [];
-        $w = [$this->stream];
+        //If there's no remote end to the socket we failed.
+        $remote = stream_socket_get_name($this->stream, true);
+        if (!$remote){
+            return false;
+        }
 
-        return stream_select($r, $w, $e, 0, 0) === 1;
+        return true;
     }
 }
