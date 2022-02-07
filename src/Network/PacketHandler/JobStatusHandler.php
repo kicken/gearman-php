@@ -8,6 +8,7 @@ use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\Promise\Deferred;
+use React\Promise\ExtendedPromiseInterface;
 use React\Promise\PromiseInterface;
 
 class JobStatusHandler implements PacketHandler {
@@ -34,7 +35,7 @@ class JobStatusHandler implements PacketHandler {
         return false;
     }
 
-    public function waitForResult(Server $server) : PromiseInterface{
+    public function waitForResult(Server $server) : ExtendedPromiseInterface{
         $packet = new Packet(PacketMagic::REQ, PacketType::GET_STATUS, [$this->data->jobHandle]);
         $server->writePacket($packet);
         $server->addPacketHandler($this);

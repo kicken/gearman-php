@@ -4,10 +4,10 @@ namespace Kicken\Gearman\Network;
 
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\Packet;
-use React\Promise\PromiseInterface;
+use React\Promise\ExtendedPromiseInterface;
 
 interface Server {
-    public function connect() : PromiseInterface;
+    public function connect() : ExtendedPromiseInterface;
 
     public function isConnected() : bool;
 

@@ -28,7 +28,6 @@ use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\EmptyServerListException;
 use Kicken\Gearman\Job\ClientBackgroundJob;
 use Kicken\Gearman\Job\ClientForegroundJob;
-use Kicken\Gearman\Job\ClientJob;
 use Kicken\Gearman\Job\Data\ClientJobData;
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
@@ -38,7 +37,7 @@ use Kicken\Gearman\Network\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Network\Server;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
-use React\Promise\PromiseInterface;
+use React\Promise\ExtendedPromiseInterface;
 use function React\Promise\resolve;
 
 /**
@@ -51,7 +50,7 @@ class Client {
     private array $serverList;
 
     private ?Server $connectedServer = null;
-    private ?PromiseInterface $pendingConnectionAttempt = null;
+    private ?ExtendedPromiseInterface $pendingConnectionAttempt = null;
 
     /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
@@ -71,11 +70,12 @@ class Client {
      * @param int $priority One of the JobPriority constants.
      * @param string $unique A unique ID for the job.
      *
-     * @return PromiseInterface<ClientJob>
+     * @return ExtendedPromiseInterface
      */
-    public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
+    public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ExtendedPromiseInterface{
         $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
 
+        /** @noinspection PhpIncompatibleReturnTypeInspection */
         return $this->connect()->then(function(Server $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
@@ -93,12 +93,13 @@ class Client {
      * @param int $priority One of the JobPriority constants.
      * @param string $unique A unique ID for the job.
      *
-     * @return PromiseInterface<Clientjob> The job handle assigned.
+     * @return ExtendedPromiseInterface The job handle assigned.
      */
-    public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
+    public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ExtendedPromiseInterface{
         $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
         $jobDetails->background = true;
 
+        /** @noinspection PhpIncompatibleReturnTypeInspection */
         return $this->connect()->then(function(Server $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
@@ -112,11 +113,12 @@ class Client {
      *
      * @param string $handle The handle of the job to get status information for.
      *
-     * @return PromiseInterface<JobStatus>
+     * @return ExtendedPromiseInterface
      */
-    public function getJobStatus(string $handle) : PromiseInterface{
+    public function getJobStatus(string $handle) : ExtendedPromiseInterface{
         $data = new JobStatusData($handle);
 
+        /** @noinspection PhpIncompatibleReturnTypeInspection */
         return $this->connect()->then(function(Server $server) use ($data){
             return (new JobStatusHandler($data))->waitForResult($server);
         })->then(function() use ($data){
@@ -128,13 +130,13 @@ class Client {
      * @param Server $server
      * @param ClientJobData $jobDetails
      *
-     * @return PromiseInterface<ClientJob>
+     * @return ExtendedPromiseInterface
      */
-    private function createJob(Server $server, ClientJobData $jobDetails) : PromiseInterface{
+    private function createJob(Server $server, ClientJobData $jobDetails) : ExtendedPromiseInterface{
         return (new CreateJobHandler($jobDetails))->createJob($server);
     }
 
-    private function connect() : PromiseInterface{
+    private function connect() : ExtendedPromiseInterface{
         if ($this->connectedServer && $this->connectedServer->isConnected()){
             return resolve($this->connectedServer);
         } else if ($this->pendingConnectionAttempt){
@@ -143,6 +145,7 @@ class Client {
             throw new EmptyServerListException();
         }
 
+        /** @var Server[] $queue */
         $queue = $this->serverList;
         $firstServer = array_shift($queue);
         $failureHandler = function() use (&$queue, &$failureHandler){
@@ -151,11 +154,11 @@ class Client {
                 throw new CouldNotConnectException();
             }
 
-            return $nextServer->connect()->then(null, $failureHandler);
+            return $nextServer->connect()->otherwise($failureHandler);
         };
 
 
-        return $this->pendingConnectionAttempt = $firstServer->connect()->then(null, $failureHandler)->then(function(Server $server){
+        return $this->pendingConnectionAttempt = $firstServer->connect()->otherwise($failureHandler)->then(function(Server $server){
             $this->connectedServer = $server;
             $this->pendingConnectionAttempt = null;
 

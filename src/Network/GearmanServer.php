@@ -10,7 +10,7 @@ use Kicken\Gearman\Protocol\PacketBuffer;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\Deferred;
-use React\Promise\PromiseInterface;
+use React\Promise\ExtendedPromiseInterface;
 use function React\Promise\reject;
 
 class GearmanServer implements Server {
@@ -33,7 +33,7 @@ class GearmanServer implements Server {
         $this->readBuffer = new PacketBuffer();
     }
 
-    public function connect() : PromiseInterface{
+    public function connect() : ExtendedPromiseInterface{
         $this->stream = stream_socket_client($this->url, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
         if (!$this->stream){
             return reject(new CouldNotConnectException());

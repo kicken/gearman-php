@@ -25,6 +25,7 @@
 namespace Kicken\Gearman;
 
 
+use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\WorkerJob;
@@ -35,6 +36,8 @@ use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
+use React\Promise\ExtendedPromiseInterface;
+use function React\Promise\any;
 
 /**
  * A class for registering functions with and waiting for work from a Gearman server.
@@ -94,13 +97,18 @@ class Worker {
      * Begin the process of accepting jobs while allowing the main script to continue.
      * Main script must run the main loop at some future point.
      */
-    public function workAsync() : void{
+    public function workAsync() : ExtendedPromiseInterface{
+        $allPromises = [];
         foreach ($this->serverList as $server){
-            $server->connect()->then(function(Server $server){
+            $allPromises[] = $server->connect()->then(function(Server $server){
                 $this->registerFunctionsWithServer($server);
                 $this->grabJob($server);
             });
         }
+
+        return any($allPromises)->otherwise(function(){
+            throw new CouldNotConnectException();
+        });
     }
 
     /**
@@ -127,7 +135,7 @@ class Worker {
             (new GrabJobHandler())->grabJob($server)->then(function(WorkerJob $job) use ($server){
                 $this->processJob($job);
                 $this->grabJob($server);
-            });
+            })->done();
         }
     }
 

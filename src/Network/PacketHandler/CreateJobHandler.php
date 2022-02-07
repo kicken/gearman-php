@@ -9,7 +9,7 @@ use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\Promise\Deferred;
-use React\Promise\PromiseInterface;
+use React\Promise\ExtendedPromiseInterface;
 
 class CreateJobHandler implements PacketHandler {
     private ClientJobData $data;
@@ -38,7 +38,7 @@ class CreateJobHandler implements PacketHandler {
         return false;
     }
 
-    public function createJob(Server $server) : PromiseInterface{
+    public function createJob(Server $server) : ExtendedPromiseInterface{
         $packetType = $this->getSubmitJobType($this->data->priority, $this->data->background);
         $arguments = [$this->data->function, $this->data->unique, $this->data->workload];
 

@@ -10,6 +10,7 @@ use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\Promise\Deferred;
+use React\Promise\ExtendedPromiseInterface;
 
 class GrabJobHandler implements PacketHandler {
     private Deferred $deferred;
@@ -18,7 +19,7 @@ class GrabJobHandler implements PacketHandler {
         $this->deferred = new Deferred();
     }
 
-    public function grabJob(Server $server){
+    public function grabJob(Server $server) : ExtendedPromiseInterface{
         $this->issueGrabJob($server);
         $server->addPacketHandler($this);
 
