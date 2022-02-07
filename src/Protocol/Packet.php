@@ -50,6 +50,10 @@ class Packet {
         $this->arguments = $arguments;
     }
 
+    public function getMagic() : string{
+        return $this->magic;
+    }
+
     /**
      * Get the packet type.
      *
@@ -72,6 +76,10 @@ class Packet {
         }
 
         throw new \RangeException('Argument index out of range.');
+    }
+
+    public function getArgumentList() : array{
+        return $this->arguments;
     }
 
     /**

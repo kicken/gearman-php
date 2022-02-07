@@ -31,4 +31,15 @@ final class PacketMagic {
 
     private function __construct(){
     }
+
+    public static function toReadableString(string $magic) : string{
+        $r = new \ReflectionClass(self::class);
+        foreach ($r->getReflectionConstants() as $const){
+            if ($const->getValue() === $magic){
+                return $r->getShortName() . '::' . $const->getName();
+            }
+        }
+
+        throw new \DomainException('Constant not found.');
+    }
 }
