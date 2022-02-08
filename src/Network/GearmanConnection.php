@@ -87,6 +87,12 @@ class GearmanConnection implements Connection {
                 $this->readBuffer->feed($data);
             }
         } while ($data);
+
+        if (feof($this->stream)){
+            $this->loop->removeReadStream($this->stream);
+            fclose($this->stream);
+            $this->stream = null;
+        }
     }
 
     private function emitPackets(){
