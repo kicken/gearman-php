@@ -20,17 +20,17 @@ class CreateJobHandler extends BinaryPacketHandler {
         $this->jobHandleDeferred = new Deferred();
     }
 
-    public function handleBinaryPacket(Connection $server, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
         if ($packet->getType() === PacketType::JOB_CREATED && !$this->data->jobHandle){
             $this->data->jobHandle = $packet->getArgument(0);
             $this->jobHandleDeferred->resolve();
             if ($this->data->background){
-                $server->removePacketHandler($this);
+                $connection->removePacketHandler($this);
             }
 
             return true;
         } else if ($packet->getArgument(0) === $this->data->jobHandle){
-            $this->updateJobData($server, $packet);
+            $this->updateJobData($connection, $packet);
 
             return true;
         }

@@ -26,20 +26,20 @@ class GrabJobHandler extends BinaryPacketHandler {
         return $this->deferred->promise();
     }
 
-    public function handleBinaryPacket(Connection $server, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
         switch ($packet->getType()){
             case PacketType::NO_JOB:
-                $this->sleep($server);
+                $this->sleep($connection);
 
                 return true;
             case PacketType::JOB_ASSIGN:
             case PacketType::JOB_ASSIGN_UNIQ:
-                $this->deferred->resolve($this->createJob($server, $packet));
-                $server->removePacketHandler($this);
+                $this->deferred->resolve($this->createJob($connection, $packet));
+                $connection->removePacketHandler($this);
 
                 return true;
             case PacketType::NOOP:
-                $this->issueGrabJob($server);
+                $this->issueGrabJob($connection);
 
                 return true;
             default:

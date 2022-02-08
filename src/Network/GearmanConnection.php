@@ -98,9 +98,20 @@ class GearmanConnection implements Connection {
     private function emitPackets(){
         while ($packet = $this->readBuffer->readPacket()){
             $handlerQueue = $this->handlerList;
+            $handled = false;
             do {
                 $handler = array_shift($handlerQueue);
-            } while ($handler && !$handler->handlePacket($this, $packet));
+            } while ($handler && !($handled = $handler->handlePacket($this, $packet)));
+
+            if (!$handled){
+                echo 'Unhandled Packet ' . get_class($packet) . ': "' . $this->encodePacket($packet) . '"';
+            }
         }
+    }
+
+    private function encodePacket(string $packet){
+        return preg_replace_callback('/[^A-Za-z0-9]/', function($v){
+            return '\x' . bin2hex($v[0]);
+        }, $packet);
     }
 }

@@ -9,9 +9,9 @@ use Kicken\Gearman\Protocol\Packet;
 abstract class AdministrativePacketHandler implements PacketHandler {
     abstract public function handleAdministrativePacket(Connection $connection, AdministrativePacket $packet) : bool;
 
-    public function handlePacket(Connection $server, Packet $packet) : bool{
+    public function handlePacket(Connection $connection, Packet $packet) : bool{
         if ($packet instanceof AdministrativePacket){
-            return $this->handleAdministrativePacket($server, $packet);
+            return $this->handleAdministrativePacket($connection, $packet);
         } else {
             return false;
         }

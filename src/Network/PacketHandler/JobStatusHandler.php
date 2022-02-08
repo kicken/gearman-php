@@ -19,14 +19,14 @@ class JobStatusHandler extends BinaryPacketHandler {
         $this->deferred = new Deferred();
     }
 
-    public function handleBinaryPacket(Connection $server, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
         if ($packet->getType() === PacketType::STATUS_RES && $packet->getArgument(0) === $this->data->jobHandle){
             $this->data->isKnown = (bool)(int)$packet->getArgument(1);
             $this->data->isRunning = (bool)(int)$packet->getArgument(2);
             $this->data->numerator = (int)$packet->getArgument(3);
             $this->data->denominator = (int)$packet->getArgument(4);
             $this->deferred->resolve();
-            $server->removePacketHandler($this);
+            $connection->removePacketHandler($this);
 
             return true;
         }

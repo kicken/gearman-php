@@ -6,5 +6,5 @@ use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\Packet;
 
 interface PacketHandler {
-    public function handlePacket(Connection $server, Packet $packet) : bool;
+    public function handlePacket(Connection $connection, Packet $packet) : bool;
 }
