@@ -6,9 +6,7 @@ use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\Packet;
 use React\Promise\ExtendedPromiseInterface;
 
-interface Server {
-    public function connect() : ExtendedPromiseInterface;
-
+interface Connection {
     public function isConnected() : bool;
 
     public function writePacket(Packet $packet) : void;

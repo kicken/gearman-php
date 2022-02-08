@@ -10,7 +10,7 @@ use Kicken\Gearman\Network\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
-use Kicken\Gearman\Test\Network\PacketPlaybackServer;
+use Kicken\Gearman\Test\Network\PacketPlaybackConnection;
 use PHPUnit\Framework\TestCase;
 
 class CreateJobHandlerTest extends TestCase {
@@ -19,11 +19,11 @@ class CreateJobHandlerTest extends TestCase {
         $job = new ClientForegroundJob($data);
         $handler = new CreateJobHandler($data);
 
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
         ]);
         $server->addPacketHandler($handler);
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -37,11 +37,11 @@ class CreateJobHandlerTest extends TestCase {
         $job = new ClientBackgroundJob($data, null);
         $handler = new CreateJobHandler($data);
 
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
         ]);
         $server->addPacketHandler($handler);
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -53,7 +53,7 @@ class CreateJobHandlerTest extends TestCase {
         /**
          * @var ClientForegroundJob $job
          * @var CreateJobHandler $handler
-         * @var PacketPlaybackServer $server
+         * @var PacketPlaybackConnection $server
          */
         [$job, $handler, $server] = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
@@ -67,7 +67,7 @@ class CreateJobHandlerTest extends TestCase {
             $numerator += $job->getNumerator();
             $denominator += $job->getDenominator();
         });
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -81,7 +81,7 @@ class CreateJobHandlerTest extends TestCase {
         /**
          * @var ClientForegroundJob $job
          * @var CreateJobHandler $handler
-         * @var PacketPlaybackServer $server
+         * @var PacketPlaybackConnection $server
          */
         [$job, $handler, $server] = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
@@ -94,7 +94,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onData(function() use (&$data, $job){
             $data .= $job->getData();
         });
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -108,7 +108,7 @@ class CreateJobHandlerTest extends TestCase {
         /**
          * @var ClientForegroundJob $job
          * @var CreateJobHandler $handler
-         * @var PacketPlaybackServer $server
+         * @var PacketPlaybackConnection $server
          */
         [$job, $handler, $server] = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
@@ -121,7 +121,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onWarning(function() use (&$data, $job){
             $data .= $job->getData();
         });
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -135,7 +135,7 @@ class CreateJobHandlerTest extends TestCase {
         /**
          * @var ClientForegroundJob $job
          * @var CreateJobHandler $handler
-         * @var PacketPlaybackServer $server
+         * @var PacketPlaybackConnection $server
          */
         [$job, $handler, $server] = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
@@ -148,7 +148,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onComplete(function() use (&$complete){
             $complete = true;
         });
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -165,7 +165,7 @@ class CreateJobHandlerTest extends TestCase {
         /**
          * @var ClientForegroundJob $job
          * @var CreateJobHandler $handler
-         * @var PacketPlaybackServer $server
+         * @var PacketPlaybackConnection $server
          */
         [$job, $handler, $server] = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
@@ -176,7 +176,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onFail(function() use (&$failure){
             $failure = true;
         });
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -189,7 +189,7 @@ class CreateJobHandlerTest extends TestCase {
         /**
          * @var ClientForegroundJob $job
          * @var CreateJobHandler $handler
-         * @var PacketPlaybackServer $server
+         * @var PacketPlaybackConnection $server
          */
         [$job, $handler, $server] = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
@@ -200,7 +200,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onException(function() use (&$failure){
             $failure = true;
         });
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -214,7 +214,7 @@ class CreateJobHandlerTest extends TestCase {
         /**
          * @var ClientForegroundJob $job
          * @var CreateJobHandler $handler
-         * @var PacketPlaybackServer $server
+         * @var PacketPlaybackConnection $server
          */
         [$job, $handler, $server] = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
@@ -236,7 +236,7 @@ class CreateJobHandlerTest extends TestCase {
             $complete = true;
         });
 
-        $server->connect()->then(function(PacketPlaybackServer $server){
+        $server->connect()->then(function(PacketPlaybackConnection $server){
             $server->playback();
         });
 
@@ -252,7 +252,7 @@ class CreateJobHandlerTest extends TestCase {
         $data = new ClientJobData('reverse', 'test', '', JobPriority::NORMAL);
         $job = new ClientForegroundJob($data);
         $handler = new CreateJobHandler($data);
-        $server = new PacketPlaybackServer($packetSequence);
+        $server = new PacketPlaybackConnection($packetSequence);
         $server->addPacketHandler($handler);
 
         return [$job, $handler, $server];

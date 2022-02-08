@@ -8,17 +8,17 @@ use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
-use Kicken\Gearman\Test\Network\PacketPlaybackServer;
+use Kicken\Gearman\Test\Network\PacketPlaybackConnection;
 use PHPUnit\Framework\TestCase;
 
 class GrabJobHandlerTest extends TestCase {
     public function testGrabJobPacketSent(){
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
         ]);
 
         $handler = new GrabJobHandler();
-        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler){
+        $server->connect()->then(function(PacketPlaybackConnection $server) use ($handler){
             $handler->grabJob($server);
             $server->playback();
         });
@@ -27,14 +27,14 @@ class GrabJobHandlerTest extends TestCase {
     }
 
     public function testGrabJobSuccessful(){
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, ['H:test:1', 'reverse', 'uniq1', 'test'])
         ]);
 
         $handler = new GrabJobHandler();
         $jobReceived = null;
-        $server->connect()->then(function(PacketPlaybackServer $server) use (&$jobReceived, $handler){
+        $server->connect()->then(function(PacketPlaybackConnection $server) use (&$jobReceived, $handler){
             $handler->grabJob($server)->then(function(WorkerJob $job) use (&$jobReceived){
                 $jobReceived = $job;
             });
@@ -49,13 +49,13 @@ class GrabJobHandlerTest extends TestCase {
     }
 
     public function testGrabJobSleepsOnNoJob(){
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::NO_JOB)
             , new IncomingPacket(PacketMagic::REQ, PacketType::PRE_SLEEP)
         ]);
         $handler = new GrabJobHandler();
-        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler){
+        $server->connect()->then(function(PacketPlaybackConnection $server) use ($handler){
             $handler->grabJob($server);
             $server->playback();
         });
@@ -64,7 +64,7 @@ class GrabJobHandlerTest extends TestCase {
     }
 
     public function testGrabJobSuccessfulAfterSleep(){
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::NO_JOB)
             , new IncomingPacket(PacketMagic::REQ, PacketType::PRE_SLEEP)
@@ -75,7 +75,7 @@ class GrabJobHandlerTest extends TestCase {
         $handler = new GrabJobHandler();
         $jobReceived = null;
 
-        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler, &$jobReceived){
+        $server->connect()->then(function(PacketPlaybackConnection $server) use ($handler, &$jobReceived){
             $handler->grabJob($server)->then(function(WorkerJob $job) use (&$jobReceived){
                 $jobReceived = $job;
             });

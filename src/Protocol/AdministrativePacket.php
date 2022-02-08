@@ -12,4 +12,8 @@ class AdministrativePacket implements Packet {
     public function getCommand() : string{
         return $this->command;
     }
+
+    public function __toString(){
+        return $this->command . "\r\n";
+    }
 }

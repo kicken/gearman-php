@@ -11,13 +11,13 @@ use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\AutoPlaybackServer;
 use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
-use Kicken\Gearman\Test\Network\PacketPlaybackServer;
+use Kicken\Gearman\Test\Network\PacketPlaybackConnection;
 use PHPUnit\Framework\TestCase;
 use React\EventLoop\Loop;
 
 class ClientTest extends TestCase {
     public function testDoesConnect(){
-        $server = new PacketPlaybackServer();
+        $server = new PacketPlaybackConnection();
         $client = new Client($server);
         $client->submitJob('reverse', 'test');
 

@@ -6,7 +6,7 @@ use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\ExtendedPromiseInterface;
 
-class AutoPlaybackServer extends PacketPlaybackServer {
+class AutoPlaybackServer extends PacketPlaybackConnection {
     private LoopInterface $loop;
 
     public function __construct(array $packetSequence = [], LoopInterface $loop = null){

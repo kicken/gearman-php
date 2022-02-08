@@ -2,23 +2,16 @@
 
 namespace Kicken\Gearman\Network;
 
-use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
-use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
-use React\Promise\Deferred;
-use React\Promise\ExtendedPromiseInterface;
-use function React\Promise\reject;
 
-class GearmanServer implements Server {
-    private string $url;
-    private int $connectTimeout;
+class GearmanConnection implements Connection {
     /** @var resource */
-    private $stream = null;
+    private $stream;
 
     /** @var PacketHandler[] */
     private array $handlerList = [];
@@ -27,30 +20,16 @@ class GearmanServer implements Server {
     private string $writeBuffer = '';
     private PacketBuffer $readBuffer;
 
-    public function __construct(string $url, int $connectTimeout = null, LoopInterface $loop = null){
-        $this->url = $url;
-        $this->connectTimeout = $connectTimeout ?? ini_get('default_socket_timeout');
+    public function __construct($stream, LoopInterface $loop = null){
+        $this->stream = $stream;
         $this->loop = $loop ?? Loop::get();
         $this->readBuffer = new PacketBuffer();
-    }
 
-    public function connect() : ExtendedPromiseInterface{
-        $this->stream = stream_socket_client($this->url, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
-        if (!$this->stream){
-            return reject(new CouldNotConnectException());
-        }
-
-        $deferred = new Deferred();
-        $timeoutTimer = $this->loop->addTimer($this->connectTimeout, function() use ($deferred){
-            $this->completeConnectionAttempt($deferred);
+        stream_set_blocking($this->stream, false);
+        $this->loop->addReadStream($this->stream, function(){
+            $this->buffer();
+            $this->emitPackets();
         });
-
-        $this->loop->addWriteStream($this->stream, function() use ($deferred, $timeoutTimer){
-            $this->loop->cancelTimer($timeoutTimer);
-            $this->completeConnectionAttempt($deferred);
-        });
-
-        return $deferred->promise();
     }
 
     public function isConnected() : bool{
@@ -112,43 +91,10 @@ class GearmanServer implements Server {
 
     private function emitPackets(){
         while ($packet = $this->readBuffer->readPacket()){
-            if (!$packet instanceof BinaryPacket){
-                continue;
-            }
-
             $handlerQueue = $this->handlerList;
             do {
                 $handler = array_shift($handlerQueue);
             } while ($handler && !$handler->handlePacket($this, $packet));
         }
-    }
-
-    private function completeConnectionAttempt(Deferred $deferred){
-        $this->loop->removeWriteStream($this->stream);
-        if ($this->isStreamConnected()){
-            stream_set_blocking($this->stream, false);
-            $this->loop->addReadStream($this->stream, function(){
-                $this->buffer();
-                $this->emitPackets();
-            });
-            $deferred->resolve($this);
-        } else {
-            $this->stream = null;
-            $deferred->reject(new CouldNotConnectException());
-        }
-    }
-
-    private function isStreamConnected() : bool{
-        if (!$this->stream){
-            return false;
-        }
-
-        //If there's no remote end to the socket we failed.
-        $remote = stream_socket_get_name($this->stream, true);
-        if (!$remote){
-            return false;
-        }
-
-        return true;
     }
 }

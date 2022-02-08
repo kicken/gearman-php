@@ -9,18 +9,18 @@ use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
-use Kicken\Gearman\Test\Network\PacketPlaybackServer;
+use Kicken\Gearman\Test\Network\PacketPlaybackConnection;
 use PHPUnit\Framework\TestCase;
 
 class JobStatusHandlerTest extends TestCase {
     public function testStatusRequestSent(){
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
         ]);
 
         $data = new JobStatusData('H:test:1');
         $handler = new JobStatusHandler($data);
-        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler){
+        $server->connect()->then(function(PacketPlaybackConnection $server) use ($handler){
             $handler->waitForResult($server);
             $server->playback();
         });
@@ -29,7 +29,7 @@ class JobStatusHandlerTest extends TestCase {
     }
 
     public function testStatusReceived(){
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::STATUS_RES, ['H:test:1', 1, 1, 5, 10])
         ]);
@@ -38,7 +38,7 @@ class JobStatusHandlerTest extends TestCase {
         $handler = new JobStatusHandler($data);
 
         $statusReceived = null;
-        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler, &$statusReceived, $data){
+        $server->connect()->then(function(PacketPlaybackConnection $server) use ($handler, &$statusReceived, $data){
             $handler->waitForResult($server)->then(function() use (&$statusReceived, $data){
                 $statusReceived = new JobStatus($data);
             });
@@ -56,7 +56,7 @@ class JobStatusHandlerTest extends TestCase {
     }
 
     public function testStatusReceivedIsCorrectHandle(){
-        $server = new PacketPlaybackServer([
+        $server = new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::STATUS_RES, ['H:test:2', 1, 1, 5, 10])
             , new OutgoingPacket(PacketMagic::RES, PacketType::STATUS_RES, ['H:test:1', 1, 0, 0, 10])
@@ -66,7 +66,7 @@ class JobStatusHandlerTest extends TestCase {
         $handler = new JobStatusHandler($data);
 
         $statusReceived = null;
-        $server->connect()->then(function(PacketPlaybackServer $server) use ($handler, &$statusReceived, $data){
+        $server->connect()->then(function(PacketPlaybackConnection $server) use ($handler, &$statusReceived, $data){
             $handler->waitForResult($server)->then(function() use (&$statusReceived, $data){
                 $statusReceived = new JobStatus($data);
             });

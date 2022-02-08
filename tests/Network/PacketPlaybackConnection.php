@@ -4,7 +4,7 @@ namespace Kicken\Gearman\Test\Network;
 
 use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
-use Kicken\Gearman\Network\Server;
+use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
@@ -13,7 +13,7 @@ use Kicken\Gearman\Protocol\PacketType;
 use React\Promise\ExtendedPromiseInterface;
 use function React\Promise\resolve;
 
-class PacketPlaybackServer implements Server {
+class PacketPlaybackConnection implements Connection {
     /** @var PacketHandler[] */
     private array $handlerList = [];
     private array $sequence;

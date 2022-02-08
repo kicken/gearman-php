@@ -2,10 +2,8 @@
 
 namespace Kicken\Gearman;
 
-use Kicken\Gearman\Network\Endpoint;
-use Kicken\Gearman\Network\GearmanEndpoint;
+use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\PacketHandler\VersionHandler;
-use Kicken\Gearman\Network\ServerStream;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 
@@ -19,20 +17,12 @@ class Server {
         }
 
         $this->loop = $loop ?? Loop::get();
-        $this->endpointList = array_map(function($endpoint){
-            if ($endpoint instanceof Endpoint){
-                return $endpoint;
-            } else if (is_string($endpoint)){
-                return new GearmanEndpoint($endpoint, $this->loop);
-            } else {
-                throw new \InvalidArgumentException();
-            }
-        }, $endpointList);
+        $this->endpointList = mapToEndpointObjects($endpointList, $this->loop);
     }
 
     public function run(){
         foreach ($this->endpointList as $endpoint){
-            $endpoint->listen(function(ServerStream $stream){
+            $endpoint->listen(function(Connection $stream){
                 $stream->addPacketHandler(new VersionHandler());
             });
         }

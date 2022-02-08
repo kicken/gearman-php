@@ -4,7 +4,7 @@ namespace Kicken\Gearman\Network\PacketHandler;
 
 use Kicken\Gearman\Job\Data\ClientJobData;
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Network\Server;
+use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -20,7 +20,7 @@ class CreateJobHandler extends BinaryPacketHandler {
         $this->jobHandleDeferred = new Deferred();
     }
 
-    public function handleBinaryPacket(Server $server, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Connection $server, BinaryPacket $packet) : bool{
         if ($packet->getType() === PacketType::JOB_CREATED && !$this->data->jobHandle){
             $this->data->jobHandle = $packet->getArgument(0);
             $this->jobHandleDeferred->resolve();
@@ -38,7 +38,7 @@ class CreateJobHandler extends BinaryPacketHandler {
         return false;
     }
 
-    public function createJob(Server $server) : ExtendedPromiseInterface{
+    public function createJob(Connection $server) : ExtendedPromiseInterface{
         $packetType = $this->getSubmitJobType($this->data->priority, $this->data->background);
         $arguments = [$this->data->function, $this->data->unique, $this->data->workload];
 
@@ -49,7 +49,7 @@ class CreateJobHandler extends BinaryPacketHandler {
         return $this->jobHandleDeferred->promise();
     }
 
-    private function updateJobData(Server $server, BinaryPacket $packet){
+    private function updateJobData(Connection $server, BinaryPacket $packet){
         switch ($packet->getType()){
             case PacketType::WORK_STATUS:
                 $this->data->numerator = (int)$packet->getArgument(1);

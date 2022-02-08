@@ -32,9 +32,10 @@ use Kicken\Gearman\Job\Data\ClientJobData;
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Job\JobStatus;
+use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Network\PacketHandler\JobStatusHandler;
-use Kicken\Gearman\Network\Server;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\ExtendedPromiseInterface;
@@ -46,19 +47,19 @@ use function React\Promise\resolve;
  * @package Kicken\Gearman
  */
 class Client {
-    /** @var Server[] */
+    /** @var Endpoint[] */
     private array $serverList;
 
-    private ?Server $connectedServer = null;
+    private ?Connection $connectedServer = null;
     private ?ExtendedPromiseInterface $pendingServerAttempt = null;
 
     /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
      *
-     * @param string|string[]|Server|Server[] $serverList The server(s) to connect to.
+     * @param string|string[]|Endpoint|Endpoint[] $serverList The server(s) to connect to.
      */
     public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
-        $this->serverList = mapToServerObjects($serverList, $loop ?? Loop::get());
+        $this->serverList = mapToEndpointObjects($serverList, $loop ?? Loop::get());
     }
 
     /**
@@ -76,7 +77,7 @@ class Client {
         $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
 
         /** @noinspection PhpIncompatibleReturnTypeInspection */
-        return $this->connect()->then(function(Server $server) use ($jobDetails){
+        return $this->connect()->then(function(Connection $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
             return new ClientForegroundJob($jobDetails);
@@ -100,7 +101,7 @@ class Client {
         $jobDetails->background = true;
 
         /** @noinspection PhpIncompatibleReturnTypeInspection */
-        return $this->connect()->then(function(Server $server) use ($jobDetails){
+        return $this->connect()->then(function(Connection $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
             return new ClientBackgroundJob($jobDetails, $this);
@@ -119,7 +120,7 @@ class Client {
         $data = new JobStatusData($handle);
 
         /** @noinspection PhpIncompatibleReturnTypeInspection */
-        return $this->connect()->then(function(Server $server) use ($data){
+        return $this->connect()->then(function(Connection $server) use ($data){
             return (new JobStatusHandler($data))->waitForResult($server);
         })->then(function() use ($data){
             return new JobStatus($data);
@@ -127,12 +128,12 @@ class Client {
     }
 
     /**
-     * @param Server $server
+     * @param Connection $server
      * @param ClientJobData $jobDetails
      *
      * @return ExtendedPromiseInterface
      */
-    private function createJob(Server $server, ClientJobData $jobDetails) : ExtendedPromiseInterface{
+    private function createJob(Connection $server, ClientJobData $jobDetails) : ExtendedPromiseInterface{
         return (new CreateJobHandler($jobDetails))->createJob($server);
     }
 
@@ -145,7 +146,7 @@ class Client {
             throw new EmptyServerListException();
         }
 
-        /** @var Server[] $queue */
+        /** @var Endpoint[] $queue */
         $queue = $this->serverList;
         $firstServer = array_shift($queue);
         $failureHandler = function() use (&$queue, &$failureHandler){
@@ -158,7 +159,7 @@ class Client {
         };
 
 
-        return $this->pendingServerAttempt = $firstServer->connect()->otherwise($failureHandler)->then(function(Server $server){
+        return $this->pendingServerAttempt = $firstServer->connect()->otherwise($failureHandler)->then(function(Connection $server){
             $this->connectedServer = $server;
             $this->pendingServerAttempt = null;
 

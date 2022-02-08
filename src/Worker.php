@@ -29,8 +29,9 @@ use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\WorkerJob;
+use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\GrabJobHandler;
-use Kicken\Gearman\Network\Server;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -45,7 +46,7 @@ use function React\Promise\any;
  * @package Kicken\Gearman
  */
 class Worker {
-    /** @var Server[] */
+    /** @var Endpoint[] */
     private array $serverList;
     private LoopInterface $loop;
     private array $workerList = [];
@@ -54,12 +55,12 @@ class Worker {
     /**
      * Create a new Gearman Worker to process jobs submitted to the server by clients.
      *
-     * @param string|string[]|Server|Server[] $serverList The server(s) to connect to.
+     * @param string|string[]|Endpoint|Endpoint[] $serverList The server(s) to connect to.
      * @param ?LoopInterface $loop Event loop implementation to use
      */
     public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
         $this->loop = $loop ?? Loop::get();
-        $this->serverList = mapToServerObjects($serverList, $this->loop);
+        $this->serverList = mapToEndpointObjects($serverList, $this->loop);
     }
 
     /**
@@ -100,7 +101,7 @@ class Worker {
     public function workAsync() : ExtendedPromiseInterface{
         $allPromises = [];
         foreach ($this->serverList as $server){
-            $allPromises[] = $server->connect()->then(function(Server $server){
+            $allPromises[] = $server->connect()->then(function(Connection $server){
                 $this->registerFunctionsWithServer($server);
                 $this->grabJob($server);
             });
@@ -118,7 +119,7 @@ class Worker {
         $this->stop = true;
     }
 
-    private function registerFunctionsWithServer(Server $server) : void{
+    private function registerFunctionsWithServer(Connection $server) : void{
         foreach ($this->workerList as $item){
             if ($item['timeout'] === null){
                 $packet = new BinaryPacket(PacketMagic::REQ, PacketType::CAN_DO, [$item['name']]);
@@ -130,7 +131,7 @@ class Worker {
         }
     }
 
-    private function grabJob(Server $server) : void{
+    private function grabJob(Connection $server) : void{
         if (!$this->stop && $server->isConnected()){
             (new GrabJobHandler())->grabJob($server)->then(function(WorkerJob $job) use ($server){
                 $this->processJob($job);

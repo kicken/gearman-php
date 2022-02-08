@@ -2,10 +2,10 @@
 
 namespace Kicken\Gearman\Test;
 
-use Kicken\Gearman\Network\GearmanServer;
+use Kicken\Gearman\Network\GearmanEndpoint;
 use PHPUnit\Framework\TestCase;
 use function Kicken\Gearman\fromBigEndian;
-use function Kicken\Gearman\mapToServerObjects;
+use function Kicken\Gearman\mapToEndpointObjects;
 use function Kicken\Gearman\toBigEndian;
 
 class UtilityTest extends TestCase {
@@ -23,24 +23,24 @@ class UtilityTest extends TestCase {
 
     public function testMapStringArrayToServerArray(){
         $serverList = ['127.0.0.1:4730'];
-        $mapped = mapToServerObjects($serverList, null);
+        $mapped = mapToEndpointObjects($serverList, null);
 
         $this->assertCount(1, $mapped);
-        $this->assertInstanceOf(GearmanServer::class, $mapped[0]);
+        $this->assertInstanceOf(GearmanEndpoint::class, $mapped[0]);
     }
 
     public function testMapServerArrayToServerArray(){
-        $serverList = [new GearmanServer('127.0.0.1:4730')];
-        $mapped = mapToServerObjects($serverList, null);
+        $serverList = [new GearmanEndpoint('127.0.0.1:4730')];
+        $mapped = mapToEndpointObjects($serverList, null);
 
         $this->assertCount(1, $mapped);
-        $this->assertInstanceOf(GearmanServer::class, $mapped[0]);
+        $this->assertInstanceOf(GearmanEndpoint::class, $mapped[0]);
     }
 
     public function testMapServerWithInvalidType(){
         $serverList = [null];
 
         $this->expectException(\InvalidArgumentException::class);
-        mapToServerObjects($serverList, null);
+        mapToEndpointObjects($serverList, null);
     }
 }

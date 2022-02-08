@@ -5,7 +5,7 @@ namespace Kicken\Gearman\Network\PacketHandler;
 use Kicken\Gearman\Job\Data\WorkJobData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Job\WorkerJob;
-use Kicken\Gearman\Network\Server;
+use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -19,14 +19,14 @@ class GrabJobHandler extends BinaryPacketHandler {
         $this->deferred = new Deferred();
     }
 
-    public function grabJob(Server $server) : ExtendedPromiseInterface{
+    public function grabJob(Connection $server) : ExtendedPromiseInterface{
         $this->issueGrabJob($server);
         $server->addPacketHandler($this);
 
         return $this->deferred->promise();
     }
 
-    public function handleBinaryPacket(Server $server, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Connection $server, BinaryPacket $packet) : bool{
         switch ($packet->getType()){
             case PacketType::NO_JOB:
                 $this->sleep($server);
@@ -47,17 +47,17 @@ class GrabJobHandler extends BinaryPacketHandler {
         }
     }
 
-    private function sleep(Server $server) : void{
+    private function sleep(Connection $server) : void{
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::PRE_SLEEP);
         $server->writePacket($packet);
     }
 
-    private function issueGrabJob(Server $server){
+    private function issueGrabJob(Connection $server){
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
         $server->writePacket($packet);
     }
 
-    private function createJob(Server $server, BinaryPacket $packet) : WorkerJob{
+    private function createJob(Connection $server, BinaryPacket $packet) : WorkerJob{
         if ($packet->getType() === PacketType::JOB_ASSIGN){
             $details = new WorkJobData($packet->getArgument(0), $packet->getArgument(1), null, JobPriority::NORMAL, $packet->getArgument(2));
         } else {

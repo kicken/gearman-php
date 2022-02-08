@@ -25,7 +25,7 @@ class PacketBuffer {
     private function extractPacket() : Packet{
         $this->begin();
         $first = $this->extractBytes(1);
-        if ($first === '\0'){
+        if ($first === "\0"){
             return $this->extractBinaryPacket();
         } else {
             return $this->extractAdministrativePacket();
@@ -33,6 +33,7 @@ class PacketBuffer {
     }
 
     private function extractBinaryPacket() : BinaryPacket{
+        $this->begin();
         $magic = $this->extractBytes(4);
         $type = $this->extractBytes(4);
         $type = fromBigEndian($type);
