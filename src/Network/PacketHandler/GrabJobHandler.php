@@ -6,13 +6,13 @@ use Kicken\Gearman\Job\Data\WorkJobData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Job\WorkerJob;
 use Kicken\Gearman\Network\Server;
-use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 
-class GrabJobHandler implements PacketHandler {
+class GrabJobHandler extends BinaryPacketHandler {
     private Deferred $deferred;
 
     public function __construct(){
@@ -26,7 +26,7 @@ class GrabJobHandler implements PacketHandler {
         return $this->deferred->promise();
     }
 
-    public function handlePacket(Server $server, Packet $packet) : bool{
+    public function handleBinaryPacket(Server $server, BinaryPacket $packet) : bool{
         switch ($packet->getType()){
             case PacketType::NO_JOB:
                 $this->sleep($server);
@@ -48,16 +48,16 @@ class GrabJobHandler implements PacketHandler {
     }
 
     private function sleep(Server $server) : void{
-        $packet = new Packet(PacketMagic::REQ, PacketType::PRE_SLEEP);
+        $packet = new BinaryPacket(PacketMagic::REQ, PacketType::PRE_SLEEP);
         $server->writePacket($packet);
     }
 
     private function issueGrabJob(Server $server){
-        $packet = new Packet(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
+        $packet = new BinaryPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
         $server->writePacket($packet);
     }
 
-    private function createJob(Server $server, Packet $packet) : WorkerJob{
+    private function createJob(Server $server, BinaryPacket $packet) : WorkerJob{
         if ($packet->getType() === PacketType::JOB_ASSIGN){
             $details = new WorkJobData($packet->getArgument(0), $packet->getArgument(1), null, JobPriority::NORMAL, $packet->getArgument(2));
         } else {

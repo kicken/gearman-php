@@ -4,14 +4,13 @@ namespace Kicken\Gearman\Network\PacketHandler;
 
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Network\Server;
-use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
-use React\Promise\PromiseInterface;
 
-class JobStatusHandler implements PacketHandler {
+class JobStatusHandler extends BinaryPacketHandler {
     private JobStatusData $data;
     private Deferred $deferred;
 
@@ -20,7 +19,7 @@ class JobStatusHandler implements PacketHandler {
         $this->deferred = new Deferred();
     }
 
-    public function handlePacket(Server $server, Packet $packet) : bool{
+    public function handleBinaryPacket(Server $server, BinaryPacket $packet) : bool{
         if ($packet->getType() === PacketType::STATUS_RES && $packet->getArgument(0) === $this->data->jobHandle){
             $this->data->isKnown = (bool)(int)$packet->getArgument(1);
             $this->data->isRunning = (bool)(int)$packet->getArgument(2);
@@ -36,7 +35,7 @@ class JobStatusHandler implements PacketHandler {
     }
 
     public function waitForResult(Server $server) : ExtendedPromiseInterface{
-        $packet = new Packet(PacketMagic::REQ, PacketType::GET_STATUS, [$this->data->jobHandle]);
+        $packet = new BinaryPacket(PacketMagic::REQ, PacketType::GET_STATUS, [$this->data->jobHandle]);
         $server->writePacket($packet);
         $server->addPacketHandler($this);
 

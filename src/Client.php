@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * OUT OF OR IN Server WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
  */
@@ -50,7 +50,7 @@ class Client {
     private array $serverList;
 
     private ?Server $connectedServer = null;
-    private ?ExtendedPromiseInterface $pendingConnectionAttempt = null;
+    private ?ExtendedPromiseInterface $pendingServerAttempt = null;
 
     /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
@@ -139,8 +139,8 @@ class Client {
     private function connect() : ExtendedPromiseInterface{
         if ($this->connectedServer && $this->connectedServer->isConnected()){
             return resolve($this->connectedServer);
-        } else if ($this->pendingConnectionAttempt){
-            return $this->pendingConnectionAttempt;
+        } else if ($this->pendingServerAttempt){
+            return $this->pendingServerAttempt;
         } else if (!$this->serverList){
             throw new EmptyServerListException();
         }
@@ -158,9 +158,9 @@ class Client {
         };
 
 
-        return $this->pendingConnectionAttempt = $firstServer->connect()->otherwise($failureHandler)->then(function(Server $server){
+        return $this->pendingServerAttempt = $firstServer->connect()->otherwise($failureHandler)->then(function(Server $server){
             $this->connectedServer = $server;
-            $this->pendingConnectionAttempt = null;
+            $this->pendingServerAttempt = null;
 
             return $server;
         });

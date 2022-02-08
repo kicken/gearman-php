@@ -2,7 +2,7 @@
 
 namespace Kicken\Gearman\Test\Protocol;
 
-use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use Kicken\Gearman\Protocol\PacketType;
 use PHPUnit\Framework\TestCase;
@@ -12,7 +12,7 @@ class PacketBufferTest extends TestCase {
         $buffer = $this->createBuffer("\x0REQ\x0\x0\x0\x1\x0\x0\x0\x7reverse");
         $packet = $buffer->readPacket();
 
-        $this->assertInstanceOf(Packet::class, $packet);
+        $this->assertInstanceOf(BinaryPacket::class, $packet);
         $this->assertEquals(PacketType::CAN_DO, $packet->getType());
         $this->assertEquals('reverse', $packet->getArgument(0));
     }
@@ -21,7 +21,7 @@ class PacketBufferTest extends TestCase {
         $buffer = $this->createBuffer("\x0REQ\x0\x0\x0\x9\x0\x0\x0\x0");
         $packet = $buffer->readPacket();
 
-        $this->assertInstanceOf(Packet::class, $packet);
+        $this->assertInstanceOf(BinaryPacket::class, $packet);
         $this->assertEquals(PacketType::GRAB_JOB, $packet->getType());
     }
 
@@ -29,7 +29,7 @@ class PacketBufferTest extends TestCase {
         $buffer = $this->createBuffer("\x0RES\x0\x0\x0\xa\x0\x0\x0\x0");
         $packet = $buffer->readPacket();
 
-        $this->assertInstanceOf(Packet::class, $packet);
+        $this->assertInstanceOf(BinaryPacket::class, $packet);
         $this->assertEquals(PacketType::NO_JOB, $packet->getType());
     }
 
@@ -37,7 +37,7 @@ class PacketBufferTest extends TestCase {
         $buffer = $this->createBuffer("\x0REQ\x0\x0\x0\x7\x0\x0\x0\xdreverse\x0\x0test");
         $packet = $buffer->readPacket();
 
-        $this->assertInstanceOf(Packet::class, $packet);
+        $this->assertInstanceOf(BinaryPacket::class, $packet);
         $this->assertEquals(PacketType::SUBMIT_JOB, $packet->getType());
         $this->assertEquals('reverse', $packet->getArgument(0));
         $this->assertEquals('', $packet->getArgument(1));
@@ -48,7 +48,7 @@ class PacketBufferTest extends TestCase {
         $buffer = $this->createBuffer("\x0RES\x0\x0\x0\x8\x0\x0\x0\x7H:lap:1");
         $packet = $buffer->readPacket();
 
-        $this->assertInstanceOf(Packet::class, $packet);
+        $this->assertInstanceOf(BinaryPacket::class, $packet);
         $this->assertEquals(PacketType::JOB_CREATED, $packet->getType());
         $this->assertEquals('H:lap:1', $packet->getArgument(0));
     }
@@ -57,7 +57,7 @@ class PacketBufferTest extends TestCase {
         $buffer = $this->createBuffer("\x0RES\x0\x0\x0\x6\x0\x0\x0\x0");
         $packet = $buffer->readPacket();
 
-        $this->assertInstanceOf(Packet::class, $packet);
+        $this->assertInstanceOf(BinaryPacket::class, $packet);
         $this->assertEquals(PacketType::NOOP, $packet->getType());
     }
 

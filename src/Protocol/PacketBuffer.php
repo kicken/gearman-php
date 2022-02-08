@@ -24,6 +24,15 @@ class PacketBuffer {
 
     private function extractPacket() : Packet{
         $this->begin();
+        $first = $this->extractBytes(1);
+        if ($first === '\0'){
+            return $this->extractBinaryPacket();
+        } else {
+            return $this->extractAdministrativePacket();
+        }
+    }
+
+    private function extractBinaryPacket() : BinaryPacket{
         $magic = $this->extractBytes(4);
         $type = $this->extractBytes(4);
         $type = fromBigEndian($type);
@@ -32,7 +41,16 @@ class PacketBuffer {
         $arguments = $this->extractBytes($size);
 
         $arguments = explode(chr(0), $arguments);
-        $packet = new Packet($magic, $type, $arguments);
+        $packet = new BinaryPacket($magic, $type, $arguments);
+        $this->commit();
+
+        return $packet;
+    }
+
+    private function extractAdministrativePacket() : AdministrativePacket{
+        $this->begin();
+        $command = $this->extractLine();
+        $packet = new AdministrativePacket($command);
         $this->commit();
 
         return $packet;
@@ -59,6 +77,22 @@ class PacketBuffer {
 
         $bytes = substr($this->buffer, $this->readOffset, $byteCount);
         $this->readOffset += $byteCount;
+
+        return $bytes;
+    }
+
+    private function extractLine(){
+        $pos = strpos($this->buffer, "\n", $this->readOffset);
+        if ($pos === false){
+            $pos = strpos($this->buffer, "\r", $this->readOffset);
+            if ($pos === false){
+                throw new InsufficientDataException();
+            }
+        }
+
+        $length = ($pos + 1) - $this->readOffset;
+        $bytes = substr($this->buffer, $this->readOffset, $length);
+        $this->readOffset += $length;
 
         return $bytes;
     }

@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * OUT OF OR IN Server WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
  */
@@ -26,9 +26,8 @@ namespace Kicken\Gearman\Job;
 
 use Kicken\Gearman\Job\Data\JobData;
 use Kicken\Gearman\Job\Data\WorkJobData;
-use Kicken\Gearman\Network\GearmanServer;
 use Kicken\Gearman\Network\Server;
-use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 
@@ -65,7 +64,7 @@ class WorkerJob extends Job {
      * @param $data
      */
     public function sendData($data) : void{
-        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_DATA, [$this->data->jobHandle, $data]);
+        $packet = new BinaryPacket(PacketMagic::REQ, PacketType::WORK_DATA, [$this->data->jobHandle, $data]);
 
         $this->send($packet);
     }
@@ -77,7 +76,7 @@ class WorkerJob extends Job {
      * @param $denominator
      */
     public function sendStatus($numerator, $denominator) : void{
-        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_STATUS, [$this->data->jobHandle, $numerator, $denominator]);
+        $packet = new BinaryPacket(PacketMagic::REQ, PacketType::WORK_STATUS, [$this->data->jobHandle, $numerator, $denominator]);
         $this->send($packet);
         $this->data->numerator = $numerator;
         $this->data->denominator = $denominator;
@@ -89,7 +88,7 @@ class WorkerJob extends Job {
      * @param $data
      */
     public function sendWarning($data) : void{
-        $packet = new Packet(PacketMagic::REQ, PacketType::WORK_WARNING, [$this->data->jobHandle, $data]);
+        $packet = new BinaryPacket(PacketMagic::REQ, PacketType::WORK_WARNING, [$this->data->jobHandle, $data]);
         $this->send($packet);
     }
 
@@ -100,7 +99,7 @@ class WorkerJob extends Job {
      */
     public function sendComplete(string $data = '') : void{
         if (!$this->data->finished){
-            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_COMPLETE, [$this->data->jobHandle, $data]);
+            $packet = new BinaryPacket(PacketMagic::REQ, PacketType::WORK_COMPLETE, [$this->data->jobHandle, $data]);
             $this->send($packet);
             $this->data->finished = true;
         }
@@ -111,7 +110,7 @@ class WorkerJob extends Job {
      */
     public function sendFail() : void{
         if (!$this->data->finished){
-            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_FAIL, [$this->data->jobHandle]);
+            $packet = new BinaryPacket(PacketMagic::REQ, PacketType::WORK_FAIL, [$this->data->jobHandle]);
             $this->send($packet);
             $this->data->finished = true;
         }
@@ -124,13 +123,13 @@ class WorkerJob extends Job {
      */
     public function sendException($exception) : void{
         if (!$this->data->finished){
-            $packet = new Packet(PacketMagic::REQ, PacketType::WORK_EXCEPTION, [$this->data->jobHandle, $exception]);
+            $packet = new BinaryPacket(PacketMagic::REQ, PacketType::WORK_EXCEPTION, [$this->data->jobHandle, $exception]);
             $this->send($packet);
             $this->sendFail();
         }
     }
 
-    private function send(Packet $packet) : void{
+    private function send(BinaryPacket $packet) : void{
         $this->server->writePacket($packet);
     }
 }

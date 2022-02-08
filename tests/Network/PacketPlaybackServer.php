@@ -5,12 +5,12 @@ namespace Kicken\Gearman\Test\Network;
 use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Network\Server;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\Promise\ExtendedPromiseInterface;
-use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
 class PacketPlaybackServer implements Server {
@@ -89,16 +89,16 @@ class PacketPlaybackServer implements Server {
         } while ($handler && !$handler->handlePacket($this, $packet));
     }
 
-    private function unexpectedPacket(Packet $expected, Packet $actual) : \RuntimeException{
+    private function unexpectedPacket(Packet $expected, BinaryPacket $actual) : \RuntimeException{
         $message = sprintf('Unexpected packet written.  Expected: %s, Actual: %s'
-            , $this->encodePacket($expected)
+            , $expected instanceof BinaryPacket ? $this->encodePacket($expected) : ''
             , $this->encodePacket($actual)
         );
 
         return new \RuntimeException($message);
     }
 
-    private function encodePacket(Packet $packet){
+    private function encodePacket(BinaryPacket $packet){
         return json_encode([
             'magic' => PacketMagic::toReadableString($packet->getMagic())
             , 'type' => PacketType::toReadableString($packet->getType())

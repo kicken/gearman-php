@@ -5,13 +5,13 @@ namespace Kicken\Gearman\Network\PacketHandler;
 use Kicken\Gearman\Job\Data\ClientJobData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Network\Server;
-use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 
-class CreateJobHandler implements PacketHandler {
+class CreateJobHandler extends BinaryPacketHandler {
     private ClientJobData $data;
     private Deferred $jobHandleDeferred;
 
@@ -20,7 +20,7 @@ class CreateJobHandler implements PacketHandler {
         $this->jobHandleDeferred = new Deferred();
     }
 
-    public function handlePacket(Server $server, Packet $packet) : bool{
+    public function handleBinaryPacket(Server $server, BinaryPacket $packet) : bool{
         if ($packet->getType() === PacketType::JOB_CREATED && !$this->data->jobHandle){
             $this->data->jobHandle = $packet->getArgument(0);
             $this->jobHandleDeferred->resolve();
@@ -42,14 +42,14 @@ class CreateJobHandler implements PacketHandler {
         $packetType = $this->getSubmitJobType($this->data->priority, $this->data->background);
         $arguments = [$this->data->function, $this->data->unique, $this->data->workload];
 
-        $packet = new Packet(PacketMagic::REQ, $packetType, $arguments);
+        $packet = new BinaryPacket(PacketMagic::REQ, $packetType, $arguments);
         $server->writePacket($packet);
         $server->addPacketHandler($this);
 
         return $this->jobHandleDeferred->promise();
     }
 
-    private function updateJobData(Server $server, Packet $packet){
+    private function updateJobData(Server $server, BinaryPacket $packet){
         switch ($packet->getType()){
             case PacketType::WORK_STATUS:
                 $this->data->numerator = (int)$packet->getArgument(1);

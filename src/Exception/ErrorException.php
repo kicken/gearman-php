@@ -24,10 +24,10 @@
 
 namespace Kicken\Gearman\Exception;
 
-use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\BinaryPacket;
 
 class ErrorException extends \RuntimeException {
-    public function __construct(Packet $packet){
+    public function __construct(BinaryPacket $packet){
         $message = sprintf("Error packet received: [%s] %s", $packet->getArgument(0), $packet->getArgument(1));
         parent::__construct($message);
     }

@@ -17,7 +17,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * OUT OF OR IN Server WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
  */
@@ -31,7 +31,7 @@ use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\WorkerJob;
 use Kicken\Gearman\Network\PacketHandler\GrabJobHandler;
 use Kicken\Gearman\Network\Server;
-use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use React\EventLoop\Loop;
@@ -121,9 +121,9 @@ class Worker {
     private function registerFunctionsWithServer(Server $server) : void{
         foreach ($this->workerList as $item){
             if ($item['timeout'] === null){
-                $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO, [$item['name']]);
+                $packet = new BinaryPacket(PacketMagic::REQ, PacketType::CAN_DO, [$item['name']]);
             } else {
-                $packet = new Packet(PacketMagic::REQ, PacketType::CAN_DO_TIMEOUT, [$item['name'], $item['timeout']]);
+                $packet = new BinaryPacket(PacketMagic::REQ, PacketType::CAN_DO_TIMEOUT, [$item['name'], $item['timeout']]);
             }
 
             $server->writePacket($packet);

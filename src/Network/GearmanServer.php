@@ -5,6 +5,7 @@ namespace Kicken\Gearman\Network;
 use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use React\EventLoop\Loop;
@@ -111,6 +112,10 @@ class GearmanServer implements Server {
 
     private function emitPackets(){
         while ($packet = $this->readBuffer->readPacket()){
+            if (!$packet instanceof BinaryPacket){
+                continue;
+            }
+
             $handlerQueue = $this->handlerList;
             do {
                 $handler = array_shift($handlerQueue);

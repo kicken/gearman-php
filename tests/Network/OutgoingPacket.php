@@ -2,8 +2,8 @@
 
 namespace Kicken\Gearman\Test\Network;
 
-use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\BinaryPacket;
 
-class OutgoingPacket extends Packet {
+class OutgoingPacket extends BinaryPacket {
 
 }
