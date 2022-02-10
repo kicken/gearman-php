@@ -32,6 +32,14 @@ class GearmanConnection implements Connection {
         });
     }
 
+    public function getFd() : int{
+        return (int)$this->stream;
+    }
+
+    public function getRemoteAddress() : string{
+        return stream_socket_get_name($this->stream, true);
+    }
+
     public function isConnected() : bool{
         return $this->stream !== null;
     }

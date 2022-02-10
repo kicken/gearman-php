@@ -11,18 +11,32 @@ class WorkerRegistry {
         $this->registry = new \SplObjectStorage();
     }
 
-    public function getWorker(Connection $connection) : ?WorkerConnection{
-        if ($this->registry->contains($connection)){
-            return $this->registry[$connection];
-        }
-
-        $worker = new WorkerConnection($connection);
-        $this->registry[$connection] = $worker;
-
-        return $worker;
+    public function registerWorker(Connection $connection, string $function, ?int $timeout){
+        $worker = $this->getWorker($connection);
+        $worker->registerFunction($function, $timeout);
     }
 
-    public function createWorker(Connection $connection) : WorkerConnection{
-        return $this->registry[$connection] = new WorkerConnection($connection);
+    public function listWorkerDetails() : string{
+        $list = [];
+        /** @var Connection $connection */
+        foreach ($this->registry as $connection){
+            $worker = $this->getWorker($connection);
+            $list[] = sprintf('%d %s %s: %s'
+                , $connection->getFd()
+                , $connection->getRemoteAddress()
+                , ''
+                , implode(' ', $worker->getAvailableFunctions())
+            );
+        }
+
+        return implode("\n", $list) . "\n.";
+    }
+
+    private function getWorker(Connection $connection) : Worker{
+        if (!$this->registry->contains($connection)){
+            $this->registry->attach($connection, new Worker());
+        }
+
+        return $this->registry[$connection];
     }
 }

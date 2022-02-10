@@ -3,9 +3,9 @@
 namespace Kicken\Gearman;
 
 use Kicken\Gearman\Network\Connection;
-use Kicken\Gearman\Network\PacketHandler\VersionHandler;
-use Kicken\Gearman\Server\PacketHandler\WorkerJobHandler;
-use Kicken\Gearman\Server\PacketHandler\WorkerRegistrationHandler;
+use Kicken\Gearman\Server\PacketHandler\AdminPacketHandler;
+use Kicken\Gearman\Server\PacketHandler\ClientPacketHandler;
+use Kicken\Gearman\Server\PacketHandler\WorkerPacketHandler;
 use Kicken\Gearman\Server\WorkerRegistry;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
@@ -28,9 +28,9 @@ class Server {
     public function run(){
         foreach ($this->endpointList as $endpoint){
             $endpoint->listen(function(Connection $stream){
-                $stream->addPacketHandler(new WorkerRegistrationHandler($this->workerRegistry));
-                $stream->addPacketHandler(new WorkerJobHandler($this->workerRegistry));
-                $stream->addPacketHandler(new VersionHandler());
+                $stream->addPacketHandler(new AdminPacketHandler($this->workerRegistry));
+                $stream->addPacketHandler(new ClientPacketHandler());
+                $stream->addPacketHandler(new WorkerPacketHandler($this->workerRegistry));
             });
         }
 
