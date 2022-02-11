@@ -6,6 +6,7 @@ use Kicken\Gearman\Job\Data\ServerJobData;
 
 class JobQueue {
     private \SplPriorityQueue $queue;
+    private array $handleMap = [];
     private WorkerManager $workerRegistry;
 
     public function __construct(WorkerManager $workerRegistry){
@@ -15,6 +16,7 @@ class JobQueue {
 
     public function enqueue(ServerJobData $job){
         $this->queue->insert($job, $job->priority);
+        $this->handleMap[$job->jobHandle] = $job;
         $worker = $this->workerRegistry->findWorker($job);
         if ($worker){
             $worker->wake();
@@ -38,6 +40,26 @@ class JobQueue {
         }
 
         return null;
+    }
+
+    public function lookupJob(string $handle) : ?ServerJobData{
+        return $this->handleMap[$handle] ?? null;
+    }
+
+    public function deleteJob(ServerJobData $jobData){
+        unset($this->handleMap[$jobData->jobHandle]);
+        $nonMatches = [];
+        try {
+            while ($queuedJob = $this->queue->extract()){
+                if ($queuedJob !== $jobData){
+                    $nonMatches[] = $jobData;
+                }
+            }
+        } catch (\RuntimeException $ex){
+
+        } finally {
+            $this->requeue($nonMatches);
+        }
     }
 
     private function requeue(array $jobList) : void{

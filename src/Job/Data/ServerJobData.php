@@ -3,9 +3,7 @@
 namespace Kicken\Gearman\Job\Data;
 
 use Kicken\Gearman\Network\Connection;
-use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
-use Kicken\Gearman\Protocol\PacketMagic;
 
 class ServerJobData extends JobData {
     public string $function;
@@ -13,6 +11,7 @@ class ServerJobData extends JobData {
     public string $workload;
     public int $priority;
     public bool $background;
+    public bool $running = false;
     /** @var Connection[] */
     private array $watchList = [];
 

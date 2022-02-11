@@ -32,6 +32,9 @@ class ClientPacketHandler extends BinaryPacketHandler {
             case PacketType::SUBMIT_JOB_HIGH_BG:
                 $this->createJob($connection, $packet, JobPriority::HIGH, $packet->getType() === PacketType::SUBMIT_JOB_HIGH_BG);
                 break;
+            case PacketType::GET_STATUS:
+                $this->jobStatus($connection, $packet->getArgument(0));
+                break;
             default:
                 return false;
         }
@@ -51,6 +54,29 @@ class ClientPacketHandler extends BinaryPacketHandler {
         if (!$background){
             $job->addWatcher($connection);
         }
+    }
+
+    private function jobStatus(Connection $connection, string $handle){
+        $job = $this->jobQueue->lookupJob($handle);
+        if (!$job){
+            $packet = new BinaryPacket(PacketMagic::RES, PacketType::STATUS_RES, [
+                $handle
+                , 0
+                , 0
+                , 0
+                , 0
+            ]);
+        } else {
+            $packet = new BinaryPacket(PacketMagic::RES, PacketType::STATUS_RES, [
+                $job->jobHandle
+                , 1
+                , (int)$job->running
+                , $job->numerator
+                , $job->denominator
+            ]);
+        }
+
+        $connection->writePacket($packet);
     }
 
     private function newHandle() : string{

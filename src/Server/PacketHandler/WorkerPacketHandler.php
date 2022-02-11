@@ -52,6 +52,7 @@ class WorkerPacketHandler extends BinaryPacketHandler {
                 $job = $worker->getCurrentJob();
                 $job->sendToWatchers(new BinaryPacket(PacketMagic::RES, $packet->getType(), $packet->getArgumentList()));
                 $worker->assignJob(null);
+                $this->jobQueue->deleteJob($job);
                 break;
             default:
                 return false;
@@ -67,19 +68,22 @@ class WorkerPacketHandler extends BinaryPacketHandler {
 
         if (!$job){
             $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::NO_JOB));
-        } else if ($grabType === PacketType::GRAB_JOB){
-            $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_ASSIGN, [
-                $job->jobHandle
-                , $job->function
-                , $job->workload
-            ]));
         } else {
-            $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, [
-                $job->jobHandle
-                , $job->function
-                , $job->uniqueId
-                , $job->workload
-            ]));
+            $job->running = true;
+            if ($grabType === PacketType::GRAB_JOB){
+                $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_ASSIGN, [
+                    $job->jobHandle
+                    , $job->function
+                    , $job->workload
+                ]));
+            } else {
+                $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, [
+                    $job->jobHandle
+                    , $job->function
+                    , $job->uniqueId
+                    , $job->workload
+                ]));
+            }
         }
     }
 }
