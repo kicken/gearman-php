@@ -5,12 +5,12 @@ namespace Kicken\Gearman\Server\PacketHandler;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\PacketHandler\AdministrativePacketHandler;
 use Kicken\Gearman\Protocol\AdministrativePacket;
-use Kicken\Gearman\Server\WorkerRegistry;
+use Kicken\Gearman\Server\WorkerManager;
 
 class AdminPacketHandler extends AdministrativePacketHandler {
-    private WorkerRegistry $workerRegistry;
+    private WorkerManager $workerRegistry;
 
-    public function __construct(WorkerRegistry $registry){
+    public function __construct(WorkerManager $registry){
         $this->workerRegistry = $registry;
     }
 

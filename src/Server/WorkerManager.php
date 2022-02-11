@@ -2,18 +2,15 @@
 
 namespace Kicken\Gearman\Server;
 
+use Kicken\Gearman\Job\Data\ServerJobData;
 use Kicken\Gearman\Network\Connection;
 
-class WorkerRegistry {
+class WorkerManager {
+    /** @var \SplObjectStorage */
     private \SplObjectStorage $registry;
 
     public function __construct(){
         $this->registry = new \SplObjectStorage();
-    }
-
-    public function registerWorker(Connection $connection, string $function, ?int $timeout){
-        $worker = $this->getWorker($connection);
-        $worker->registerFunction($function, $timeout);
     }
 
     public function listWorkerDetails() : string{
@@ -32,9 +29,21 @@ class WorkerRegistry {
         return implode("\n", $list) . "\n.";
     }
 
-    private function getWorker(Connection $connection) : Worker{
+    public function findWorker(ServerJobData $jobData) : ?Worker{
+        /** @var Connection $connection */
+        foreach ($this->registry as $connection){
+            $worker = $this->getWorker($connection);
+            if ($worker->canDo($jobData)){
+                return $worker;
+            }
+        }
+
+        return null;
+    }
+
+    public function getWorker(Connection $connection) : Worker{
         if (!$this->registry->contains($connection)){
-            $this->registry->attach($connection, new Worker());
+            $this->registry->attach($connection, new Worker($connection));
         }
 
         return $this->registry[$connection];

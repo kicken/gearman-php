@@ -3,17 +3,19 @@
 namespace Kicken\Gearman;
 
 use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\PacketHandler\AdminPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\ClientPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\WorkerPacketHandler;
-use Kicken\Gearman\Server\WorkerRegistry;
+use Kicken\Gearman\Server\WorkerManager;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 
 class Server {
     private array $endpointList;
     private LoopInterface $loop;
-    private WorkerRegistry $workerRegistry;
+    private WorkerManager $workerRegistry;
+    private JobQueue $jobQueue;
 
     public function __construct($endpointList = '127.0.0.1:4730', LoopInterface $loop = null){
         if (!is_array($endpointList)){
@@ -22,15 +24,16 @@ class Server {
 
         $this->loop = $loop ?? Loop::get();
         $this->endpointList = mapToEndpointObjects($endpointList, $this->loop);
-        $this->workerRegistry = new WorkerRegistry();
+        $this->workerRegistry = new WorkerManager();
+        $this->jobQueue = new JobQueue($this->workerRegistry, $this->loop);
     }
 
     public function run(){
         foreach ($this->endpointList as $endpoint){
             $endpoint->listen(function(Connection $stream){
                 $stream->addPacketHandler(new AdminPacketHandler($this->workerRegistry));
-                $stream->addPacketHandler(new ClientPacketHandler());
-                $stream->addPacketHandler(new WorkerPacketHandler($this->workerRegistry));
+                $stream->addPacketHandler(new ClientPacketHandler($this->jobQueue));
+                $stream->addPacketHandler(new WorkerPacketHandler($this->workerRegistry, $this->jobQueue));
             });
         }
 

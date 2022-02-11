@@ -9,8 +9,15 @@ use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Kicken\Gearman\Server\JobQueue;
 
 class ClientPacketHandler extends BinaryPacketHandler {
+    private JobQueue $jobQueue;
+
+    public function __construct(JobQueue $jobQueue){
+        $this->jobQueue = $jobQueue;
+    }
+
     public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
         switch ($packet->getType()){
             case PacketType::SUBMIT_JOB:
@@ -38,7 +45,8 @@ class ClientPacketHandler extends BinaryPacketHandler {
         $uniqueId = $packet->getArgument(1);
         $workload = $packet->getArgument(2);
 
-        $job = new ServerJobData($newHandle, $function, $priority, $workload, $priority, $background);
+        $job = new ServerJobData($newHandle, $function, $uniqueId, $workload, $priority, $background);
+        $this->jobQueue->enqueue($job);
         $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_CREATED, [$newHandle]));
         if (!$background){
             $job->addWatcher($connection);

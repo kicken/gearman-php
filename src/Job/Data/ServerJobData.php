@@ -3,13 +3,17 @@
 namespace Kicken\Gearman\Job\Data;
 
 use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Protocol\BinaryPacket;
+use Kicken\Gearman\Protocol\Packet;
+use Kicken\Gearman\Protocol\PacketMagic;
 
 class ServerJobData extends JobData {
-    private string $function;
-    private string $uniqueId;
-    private string $workload;
-    private int $priority;
-    private bool $background;
+    public string $function;
+    public string $uniqueId;
+    public string $workload;
+    public int $priority;
+    public bool $background;
+    /** @var Connection[] */
     private array $watchList = [];
 
     public function __construct(?string $jobHandle, string $function, string $uniqueId, string $workload, int $priority, bool $background){
@@ -23,5 +27,15 @@ class ServerJobData extends JobData {
 
     public function addWatcher(Connection $connection){
         $this->watchList[] = $connection;
+    }
+
+    public function getWatcherList() : array{
+        return $this->watchList;
+    }
+
+    public function sendToWatchers(Packet $packet){
+        foreach ($this->watchList as $watcher){
+            $watcher->writePacket($packet);
+        }
     }
 }

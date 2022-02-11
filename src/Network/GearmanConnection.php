@@ -112,7 +112,7 @@ class GearmanConnection implements Connection {
             } while ($handler && !($handled = $handler->handlePacket($this, $packet)));
 
             if (!$handled){
-                echo 'Unhandled Packet ' . get_class($packet) . ': "' . $this->encodePacket($packet) . '"';
+                echo 'Unhandled Packet ' . get_class($packet) . ': "' . $this->encodePacket($packet) . '"', PHP_EOL;
             }
         }
     }
