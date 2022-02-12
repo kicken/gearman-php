@@ -25,7 +25,7 @@ class Server {
         $this->loop = $loop ?? Loop::get();
         $this->endpointList = mapToEndpointObjects($endpointList, $this->loop);
         $this->workerRegistry = new WorkerManager();
-        $this->jobQueue = new JobQueue($this->workerRegistry, $this->loop);
+        $this->jobQueue = new JobQueue($this->workerRegistry);
     }
 
     public function run(){

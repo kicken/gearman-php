@@ -2,6 +2,7 @@
 
 namespace Kicken\Gearman\Network;
 
+use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\Packet;
@@ -52,6 +53,7 @@ class GearmanConnection implements Connection {
     public function disconnect() : void{
         if ($this->stream){
             $this->loop->removeReadStream($this->stream);
+            $this->loop->removeWriteStream($this->stream);
             fclose($this->stream);
             $this->stream = null;
         }
@@ -76,7 +78,13 @@ class GearmanConnection implements Connection {
             throw new NotConnectedException();
         }
 
+        set_error_handler(function($errNo){
+            if ($errNo == E_NOTICE){
+                throw new LostConnectionException();
+            }
+        });
         $written = fwrite($this->stream, $this->writeBuffer);
+        restore_error_handler();
         if ($written === strlen($this->writeBuffer)){
             $this->writeBuffer = '';
         } else {
@@ -104,16 +112,20 @@ class GearmanConnection implements Connection {
     }
 
     private function emitPackets(){
-        while ($packet = $this->readBuffer->readPacket()){
-            $handlerQueue = $this->handlerList;
-            $handled = false;
-            do {
-                $handler = array_shift($handlerQueue);
-            } while ($handler && !($handled = $handler->handlePacket($this, $packet)));
+        try {
+            while ($packet = $this->readBuffer->readPacket()){
+                $handlerQueue = $this->handlerList;
+                $handled = false;
+                do {
+                    $handler = array_shift($handlerQueue);
+                } while ($handler && !($handled = $handler->handlePacket($this, $packet)));
 
-            if (!$handled){
-                echo 'Unhandled Packet ' . get_class($packet) . ': "' . $this->encodePacket($packet) . '"', PHP_EOL;
+                if (!$handled){
+                    echo 'Unhandled Packet ' . get_class($packet) . ': "' . $this->encodePacket($packet) . '"', PHP_EOL;
+                }
             }
+        } catch (LostConnectionException $ex){
+            $this->disconnect();
         }
     }
 

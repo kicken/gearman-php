@@ -52,7 +52,7 @@ class JobQueue {
         try {
             while ($queuedJob = $this->queue->extract()){
                 if ($queuedJob !== $jobData){
-                    $nonMatches[] = $jobData;
+                    $nonMatches[] = $queuedJob;
                 }
             }
         } catch (\RuntimeException $ex){
