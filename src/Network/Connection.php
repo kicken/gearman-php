@@ -19,4 +19,6 @@ interface Connection {
     public function addPacketHandler(PacketHandler $handler) : void;
 
     public function removePacketHandler(PacketHandler $handler) : void;
+
+    public function addDisconnectHandler(callable $handler) : void;
 }

@@ -34,6 +34,14 @@ class Server {
                 $stream->addPacketHandler(new AdminPacketHandler($this->workerRegistry));
                 $stream->addPacketHandler(new ClientPacketHandler($this->jobQueue));
                 $stream->addPacketHandler(new WorkerPacketHandler($this->workerRegistry, $this->jobQueue));
+                $stream->addDisconnectHandler(function(Connection $connection){
+                    $worker = $this->workerRegistry->getWorker($connection);
+                    $job = $worker->getCurrentJob();
+                    if ($job){
+                        $this->jobQueue->enqueue($job);
+                    }
+                    $this->workerRegistry->removeConnection($connection);
+                });
             });
         }
 

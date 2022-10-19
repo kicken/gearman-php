@@ -58,7 +58,7 @@ class Worker {
         $this->currentAssignment = $jobData;
     }
 
-    public function getCurrentJob() : ServerJobData{
+    public function getCurrentJob() : ?ServerJobData{
         return $this->currentAssignment;
     }
 }

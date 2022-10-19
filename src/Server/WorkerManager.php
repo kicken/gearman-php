@@ -48,4 +48,8 @@ class WorkerManager {
 
         return $this->registry[$connection];
     }
+
+    public function removeConnection(Connection $connection){
+        $this->registry->detach($connection);
+    }
 }

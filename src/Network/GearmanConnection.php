@@ -14,8 +14,10 @@ class GearmanConnection implements Connection {
     /** @var resource */
     private $stream;
 
+    /** @var callable[] */
+    private array $disconnectHandlerList = [];
     /** @var PacketHandler[] */
-    private array $handlerList = [];
+    private array $packetHandlerList = [];
 
     private LoopInterface $loop;
     private string $writeBuffer = '';
@@ -56,21 +58,28 @@ class GearmanConnection implements Connection {
             $this->loop->removeWriteStream($this->stream);
             fclose($this->stream);
             $this->stream = null;
+            foreach ($this->disconnectHandlerList as $handler){
+                call_user_func($handler, $this);
+            }
         }
     }
 
     public function addPacketHandler(PacketHandler $handler) : void{
-        $this->handlerList[] = $handler;
+        $this->packetHandlerList[] = $handler;
     }
 
     public function removePacketHandler(PacketHandler $handler) : void{
-        $key = array_search($handler, $this->handlerList, true);
+        $key = array_search($handler, $this->packetHandlerList, true);
         if ($key !== false){
-            unset($this->handlerList[$key]);
-            if (!$this->handlerList){
+            unset($this->packetHandlerList[$key]);
+            if (!$this->packetHandlerList){
                 $this->disconnect();
             }
         }
+    }
+
+    public function addDisconnectHandler(callable $handler) : void{
+        $this->disconnectHandlerList[] = $handler;
     }
 
     private function flush() : void{
@@ -105,16 +114,14 @@ class GearmanConnection implements Connection {
         } while ($data);
 
         if (feof($this->stream)){
-            $this->loop->removeReadStream($this->stream);
-            fclose($this->stream);
-            $this->stream = null;
+            $this->disconnect();
         }
     }
 
     private function emitPackets(){
         try {
             while ($packet = $this->readBuffer->readPacket()){
-                $handlerQueue = $this->handlerList;
+                $handlerQueue = $this->packetHandlerList;
                 $handled = false;
                 do {
                     $handler = array_shift($handlerQueue);
