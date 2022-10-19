@@ -10,6 +10,10 @@ class PacketBuffer {
     private int $bufferLength = 0;
     private int $readOffset = 0;
 
+    public function isEmpty() : bool{
+        return $this->bufferLength === 0;
+    }
+
     public function feed(string $data){
         $this->buffer .= $data;
     }

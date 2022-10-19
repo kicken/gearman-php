@@ -56,6 +56,7 @@ class WorkerPacketHandlerTest extends TestCase {
     public function testWorkData(){
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::WORK_DATA, ['H:1', 'test']);
         $this->expectGetWorkerCall();
+        $this->worker->method('getCurrentJob')->willReturn($this->job);
         $this->handler->handlePacket($this->connection, $packet);
     }
 

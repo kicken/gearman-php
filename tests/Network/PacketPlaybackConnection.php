@@ -3,21 +3,18 @@
 namespace Kicken\Gearman\Test\Network;
 
 use Kicken\Gearman\Exception\NotConnectedException;
-use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
-use React\Promise\ExtendedPromiseInterface;
-use function React\Promise\resolve;
 
 class PacketPlaybackConnection implements Connection {
     /** @var PacketHandler[] */
     private array $handlerList = [];
     private array $sequence;
-    private bool $isConnected = false;
     private PacketBuffer $writeBuffer;
 
     public function __construct(array $packetSequence = []){
@@ -25,14 +22,16 @@ class PacketPlaybackConnection implements Connection {
         $this->writeBuffer = new PacketBuffer();
     }
 
-    public function connect() : ExtendedPromiseInterface{
-        $this->isConnected = true;
-
-        return resolve($this);
+    public function isConnected() : bool{
+        return count($this->sequence) > 0 || !$this->writeBuffer->isEmpty();
     }
 
-    public function isConnected() : bool{
-        return $this->isConnected;
+    public function getRemoteAddress() : string{
+        return 'localhost';
+    }
+
+    public function getFd() : int{
+        return 0;
     }
 
     public function writePacket(Packet $packet) : void{
@@ -43,7 +42,6 @@ class PacketPlaybackConnection implements Connection {
     }
 
     public function disconnect() : void{
-        $this->isConnected = false;
     }
 
     public function addPacketHandler(PacketHandler $handler) : void{
@@ -59,6 +57,9 @@ class PacketPlaybackConnection implements Connection {
         if (!$this->handlerList){
             $this->disconnect();
         }
+    }
+
+    public function addDisconnectHandler(callable $handler) : void{
     }
 
     public function hasHandler(PacketHandler $handler) : bool{

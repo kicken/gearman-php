@@ -3,6 +3,8 @@
 namespace Kicken\Gearman\Test;
 
 use Kicken\Gearman\Job\WorkerJob;
+use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\GearmanEndpoint;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\AutoPlaybackServer;
@@ -10,16 +12,15 @@ use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
 use Kicken\Gearman\Worker;
 use PHPUnit\Framework\TestCase;
+use function React\Promise\resolve;
 
 class WorkerTest extends TestCase {
     public function testWorkWithImmediateJob(){
-        $server = new AutoPlaybackServer([
+        $worker = $this->createWorker(new AutoPlaybackServer([
             new IncomingPacket(PacketMagic::REQ, PacketType::CAN_DO, ['reverse'])
             , new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, ['H:test:1', 'reverse', '', 'test'])
-        ]);
-
-        $worker = new Worker($server);
+        ]));
 
         $mockWorkerFunction = $this->getMockBuilder(\stdClass::class)->addMethods(['reverse'])->getMock();
         $mockWorkerFunction->expects($this->once())
@@ -36,7 +37,7 @@ class WorkerTest extends TestCase {
     }
 
     public function testWorkWithDelayedJob(){
-        $server = new AutoPlaybackServer([
+        $worker = $this->createWorker(new AutoPlaybackServer([
             new IncomingPacket(PacketMagic::REQ, PacketType::CAN_DO, ['reverse'])
             , new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::NO_JOB)
@@ -44,9 +45,7 @@ class WorkerTest extends TestCase {
             , new OutgoingPacket(PacketMagic::REQ, PacketType::NOOP)
             , new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, ['H:test:1', 'reverse', '', 'test'])
-        ]);
-
-        $worker = new Worker($server);
+        ]));
 
         $mockWorkerFunction = $this->getMockBuilder(\stdClass::class)->addMethods(['reverse'])->getMock();
         $mockWorkerFunction->expects($this->once())
@@ -63,7 +62,7 @@ class WorkerTest extends TestCase {
     }
 
     public function testWorkMultipleTimes(){
-        $server = new AutoPlaybackServer([
+        $worker = $this->createWorker(new AutoPlaybackServer([
             new IncomingPacket(PacketMagic::REQ, PacketType::CAN_DO, ['reverse'])
             , new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, ['H:test:1', 'reverse', '', 'test'])
@@ -77,9 +76,7 @@ class WorkerTest extends TestCase {
             , new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, ['H:test:4', 'reverse', '', 'test'])
             , new IncomingPacket(PacketMagic::REQ, PacketType::WORK_COMPLETE, ['H:test:4', 'tset'])
-        ]);
-
-        $worker = new Worker($server);
+        ]));
 
         $mockWorkerFunction = $this->getMockBuilder(\stdClass::class)->addMethods(['reverse'])->getMock();
         $mockWorkerFunction->expects($this->exactly(4))
@@ -97,5 +94,12 @@ class WorkerTest extends TestCase {
             });
 
         $worker->registerFunction('reverse', [$mockWorkerFunction, 'reverse'])->work();
+    }
+
+    private function createWorker(Connection $connection) : Worker{
+        $endpoint = $this->getMockBuilder(GearmanEndpoint::class)->disableOriginalConstructor()->getMock();
+        $endpoint->expects($this->atLeastOnce())->method('connect')->willReturn(resolve($connection));
+
+        return new Worker($endpoint);
     }
 }

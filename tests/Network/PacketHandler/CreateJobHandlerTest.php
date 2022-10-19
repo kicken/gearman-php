@@ -23,9 +23,7 @@ class CreateJobHandlerTest extends TestCase {
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
         ]);
         $server->addPacketHandler($handler);
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertTrue($server->hasHandler($handler));
@@ -41,9 +39,7 @@ class CreateJobHandlerTest extends TestCase {
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
         ]);
         $server->addPacketHandler($handler);
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertFalse($server->hasHandler($handler));
@@ -67,9 +63,7 @@ class CreateJobHandlerTest extends TestCase {
             $numerator += $job->getNumerator();
             $denominator += $job->getDenominator();
         });
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertEquals(6, $numerator);
@@ -94,9 +88,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onData(function() use (&$data, $job){
             $data .= $job->getData();
         });
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertEquals('Ready...Set...Go!', $data);
@@ -121,9 +113,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onWarning(function() use (&$data, $job){
             $data .= $job->getData();
         });
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertEquals('Warning!Warning!Warning!', $data);
@@ -148,9 +138,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onComplete(function() use (&$complete){
             $complete = true;
         });
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertTrue($complete);
@@ -176,9 +164,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onFail(function() use (&$failure){
             $failure = true;
         });
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertTrue($failure);
@@ -200,9 +186,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onException(function() use (&$failure){
             $failure = true;
         });
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertTrue($failure);
@@ -236,9 +220,7 @@ class CreateJobHandlerTest extends TestCase {
             $complete = true;
         });
 
-        $server->connect()->then(function(PacketPlaybackConnection $server){
-            $server->playback();
-        });
+        $server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertEquals(2, $counter);
