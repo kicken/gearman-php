@@ -29,12 +29,12 @@ class WorkerManager {
         return implode("\n", $list) . "\n.";
     }
 
-    public function findWorker(ServerJobData $jobData) : ?Worker{
+    public function wakeAllCandidates(ServerJobData $jobData) : ?Worker{
         /** @var Connection $connection */
         foreach ($this->registry as $connection){
             $worker = $this->getWorker($connection);
             if ($worker->canDo($jobData)){
-                return $worker;
+                $worker->wake();
             }
         }
 

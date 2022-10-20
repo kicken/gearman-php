@@ -17,10 +17,7 @@ class JobQueue {
     public function enqueue(ServerJobData $job){
         $this->queue->insert($job, $job->priority);
         $this->handleMap[$job->jobHandle] = $job;
-        $worker = $this->workerRegistry->findWorker($job);
-        if ($worker){
-            $worker->wake();
-        }
+        $this->workerRegistry->wakeAllCandidates($job);
     }
 
     public function findJob(Worker $worker) : ?ServerJobData{
