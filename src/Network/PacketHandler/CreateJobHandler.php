@@ -8,16 +8,19 @@ use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Psr\Log\LoggerInterface;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 
 class CreateJobHandler extends BinaryPacketHandler {
     private ClientJobData $data;
     private Deferred $jobHandleDeferred;
+    private LoggerInterface $logger;
 
-    public function __construct(ClientJobData $data){
+    public function __construct(ClientJobData $data, LoggerInterface $logger){
         $this->data = $data;
         $this->jobHandleDeferred = new Deferred();
+        $this->logger = $logger;
     }
 
     public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
@@ -28,8 +31,19 @@ class CreateJobHandler extends BinaryPacketHandler {
                 $connection->removePacketHandler($this);
             }
 
+            $this->logger->debug('Job created.', [
+                'server' => $connection->getRemoteAddress()
+                , 'function' => $this->data->function
+                , 'handle' => $this->data->jobHandle
+            ]);
+
             return true;
         } else if ($packet->getArgument(0) === $this->data->jobHandle){
+            $this->logger->debug('Received job details update.', [
+                'server' => $connection->getRemoteAddress()
+                , 'function' => $this->data->function
+                , 'handle' => $this->data->jobHandle
+            ]);
             $this->updateJobData($connection, $packet);
 
             return true;
@@ -45,6 +59,8 @@ class CreateJobHandler extends BinaryPacketHandler {
         $packet = new BinaryPacket(PacketMagic::REQ, $packetType, $arguments);
         $server->writePacket($packet);
         $server->addPacketHandler($this);
+
+        $this->logger->debug('Sending create job to server', ['server' => $server->getRemoteAddress(), 'function' => $this->data->function]);
 
         return $this->jobHandleDeferred->promise();
     }

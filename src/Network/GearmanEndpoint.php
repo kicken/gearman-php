@@ -25,7 +25,7 @@ class GearmanEndpoint implements Endpoint {
     public function connect() : ExtendedPromiseInterface{
         $this->stream = stream_socket_client($this->url, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
         if (!$this->stream){
-            return reject(new CouldNotConnectException());
+            return reject(new CouldNotConnectException($this, $errno, $errStr));
         }
 
         $deferred = new Deferred();
@@ -41,10 +41,14 @@ class GearmanEndpoint implements Endpoint {
         return $deferred->promise();
     }
 
+    public function getAddress() : string{
+        return $this->url;
+    }
+
     public function listen(callable $handler){
         $this->stream = stream_socket_server($this->url, $errNo, $errStr);
         if (!$this->stream){
-            throw new CouldNotConnectException();
+            throw new CouldNotConnectException($this, $errNo, $errStr);
         }
 
         $this->loop->addReadStream($this->stream, function() use ($handler){
@@ -65,7 +69,7 @@ class GearmanEndpoint implements Endpoint {
             $deferred->resolve(new GearmanConnection($this->stream, $this->loop));
         } else {
             $this->stream = null;
-            $deferred->reject(new CouldNotConnectException());
+            $deferred->reject(new CouldNotConnectException($this));
         }
     }
 

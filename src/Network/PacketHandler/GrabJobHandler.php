@@ -9,17 +9,23 @@ use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Psr\Log\LoggerInterface;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 
 class GrabJobHandler extends BinaryPacketHandler {
     private Deferred $deferred;
+    private LoggerInterface $logger;
 
-    public function __construct(){
+    public function __construct(LoggerInterface $logger){
         $this->deferred = new Deferred();
+        $this->logger = $logger;
     }
 
     public function grabJob(Connection $server) : ExtendedPromiseInterface{
+        $this->logger->debug('Requesting job from server', [
+            'server' => $server->getRemoteAddress()
+        ]);
         $this->issueGrabJob($server);
         $server->addPacketHandler($this);
 
@@ -29,16 +35,27 @@ class GrabJobHandler extends BinaryPacketHandler {
     public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
         switch ($packet->getType()){
             case PacketType::NO_JOB:
+                $this->logger->debug('No job available, going to sleep', [
+                    'server' => $connection->getRemoteAddress()
+                ]);
                 $this->sleep($connection);
 
                 return true;
             case PacketType::JOB_ASSIGN:
             case PacketType::JOB_ASSIGN_UNIQ:
-                $this->deferred->resolve($this->createJob($connection, $packet));
+                $job = $this->createJob($connection, $packet);
+                $this->logger->debug('Job assigned', [
+                    'server' => $connection->getRemoteAddress()
+                    , 'handle' => $job->getJobHandle()
+                ]);
+                $this->deferred->resolve($job);
                 $connection->removePacketHandler($this);
 
                 return true;
             case PacketType::NOOP:
+                $this->logger->debug('Server issued wakeup.', [
+                    'server' => $connection->getRemoteAddress()
+                ]);
                 $this->issueGrabJob($connection);
 
                 return true;

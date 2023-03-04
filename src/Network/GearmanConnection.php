@@ -13,6 +13,7 @@ use React\EventLoop\LoopInterface;
 class GearmanConnection implements Connection {
     /** @var resource */
     private $stream;
+    private string $remoteAddress;
 
     /** @var callable[] */
     private array $disconnectHandlerList = [];
@@ -27,6 +28,7 @@ class GearmanConnection implements Connection {
         $this->stream = $stream;
         $this->loop = $loop ?? Loop::get();
         $this->readBuffer = new PacketBuffer();
+        $this->remoteAddress = stream_socket_get_name($this->stream, true);
 
         stream_set_blocking($this->stream, false);
         $this->loop->addReadStream($this->stream, function(){
@@ -40,7 +42,7 @@ class GearmanConnection implements Connection {
     }
 
     public function getRemoteAddress() : string{
-        return stream_socket_get_name($this->stream, true);
+        return $this->remoteAddress;
     }
 
     public function isConnected() : bool{

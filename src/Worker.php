@@ -25,7 +25,6 @@
 namespace Kicken\Gearman;
 
 
-use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\WorkerJob;
@@ -35,6 +34,8 @@ use Kicken\Gearman\Network\PacketHandler\GrabJobHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Psr\Log\LoggerAwareTrait;
+use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\ExtendedPromiseInterface;
@@ -46,6 +47,8 @@ use function React\Promise\any;
  * @package Kicken\Gearman
  */
 class Worker {
+    use LoggerAwareTrait;
+
     /** @var Endpoint[] */
     private array $serverList;
     private LoopInterface $loop;
@@ -61,6 +64,7 @@ class Worker {
     public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
         $this->loop = $loop ?? Loop::get();
         $this->serverList = mapToEndpointObjects($serverList, $this->loop);
+        $this->logger = new NullLogger();
     }
 
     /**
@@ -97,6 +101,8 @@ class Worker {
     /**
      * Begin the process of accepting jobs while allowing the main script to continue.
      * Main script must run the main loop at some future point.
+     *
+     * @noinspection PhpIncompatibleReturnTypeInspection
      */
     public function workAsync() : ExtendedPromiseInterface{
         $allPromises = [];
@@ -107,9 +113,7 @@ class Worker {
             });
         }
 
-        return any($allPromises)->otherwise(function(){
-            throw new CouldNotConnectException();
-        });
+        return any($allPromises);
     }
 
     /**
@@ -133,7 +137,7 @@ class Worker {
 
     private function grabJob(Connection $server) : void{
         if (!$this->stop && $server->isConnected()){
-            (new GrabJobHandler())->grabJob($server)->then(function(WorkerJob $job) use ($server){
+            (new GrabJobHandler($this->logger))->grabJob($server)->then(function(WorkerJob $job) use ($server){
                 $this->processJob($job);
                 $this->grabJob($server);
             })->done();

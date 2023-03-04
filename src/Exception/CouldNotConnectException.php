@@ -24,8 +24,23 @@
 
 namespace Kicken\Gearman\Exception;
 
+use Kicken\Gearman\Network\Endpoint;
+
 class CouldNotConnectException extends \RuntimeException {
-    public function __construct(){
-        parent::__construct('Could not connect to any server');
+    private Endpoint $endpoint;
+
+    public function __construct(Endpoint $endpoint, ?int $errNo = null, ?string $errStr = null){
+        if ($errNo !== null){
+            $message = sprintf('[%d] %s', $errNo, $errStr);
+        } else {
+            $message = 'Could not connect to any server';
+        }
+
+        parent::__construct($message);
+        $this->endpoint = $endpoint;
+    }
+
+    public function getEndpoint() : Endpoint{
+        return $this->endpoint;
     }
 }

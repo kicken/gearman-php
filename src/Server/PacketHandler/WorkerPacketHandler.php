@@ -9,37 +9,61 @@ use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\WorkerManager;
+use Psr\Log\LoggerInterface;
 
 class WorkerPacketHandler extends BinaryPacketHandler {
     private WorkerManager $workerManager;
     private JobQueue $jobQueue;
+    private LoggerInterface $logger;
 
-    public function __construct(WorkerManager $manager, JobQueue $jobQueue){
+    public function __construct(WorkerManager $manager, JobQueue $jobQueue, LoggerInterface $logger){
         $this->workerManager = $manager;
         $this->jobQueue = $jobQueue;
+        $this->logger = $logger;
     }
 
     public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
         switch ($packet->getType()){
             case PacketType::CAN_DO:
-                $this->workerManager->getWorker($connection)->registerFunction($packet->getArgument(0));
+                $function = $packet->getArgument(0);
+                $this->logger->info('Registering worker function.', [
+                    'worker' => $connection->getRemoteAddress(),
+                    'function' => $function
+                ]);
+                $this->workerManager->getWorker($connection)->registerFunction($function);
                 break;
             case PacketType::CAN_DO_TIMEOUT:
-                $this->workerManager->getWorker($connection)->registerFunction($packet->getArgument(0), $packet->getArgument(1));
+                $function = $packet->getArgument(0);
+                $timeout = $packet->getArgument(1);
+                $this->logger->info('Registering worker function.', [
+                    'worker' => $connection->getRemoteAddress(),
+                    'function' => $function, 'timeout' => $timeout
+                ]);
+                $this->workerManager->getWorker($connection)->registerFunction($function, $timeout);
                 break;
             case PacketType::PRE_SLEEP:
+                $this->logger->debug('Worker is going to sleep.', ['worker' => $connection->getRemoteAddress()]);
                 $this->workerManager->getWorker($connection)->sleep();
                 break;
             case PacketType::GRAB_JOB:
             case PacketType::GRAB_JOB_UNIQ:
+                $this->logger->debug('Worker is requesting a job.', ['worker' => $connection->getRemoteAddress()]);
                 $this->assignJob($connection, $packet->getType());
                 break;
             case PacketType::WORK_DATA:
             case PacketType::WORK_WARNING:
+                $this->logger->debug('Worker data/warning event.', [
+                    'worker' => $connection->getRemoteAddress()
+                    , 'type' => $packet->getType()
+                ]);
                 $job = $this->workerManager->getWorker($connection)->getCurrentJob();
                 $job->sendToWatchers(new BinaryPacket(PacketMagic::RES, $packet->getType(), $packet->getArgumentList()));
                 break;
             case PacketType::WORK_STATUS:
+                $this->logger->debug('Worker status event.', [
+                    'worker' => $connection->getRemoteAddress()
+                    , 'type' => $packet->getType()
+                ]);
                 $job = $this->workerManager->getWorker($connection)->getCurrentJob();
                 $job->numerator = $packet->getArgument(1);
                 $job->denominator = $packet->getArgument(2);
@@ -48,6 +72,10 @@ class WorkerPacketHandler extends BinaryPacketHandler {
             case PacketType::WORK_FAIL:
             case PacketType::WORK_COMPLETE:
             case PacketType::WORK_EXCEPTION:
+                $this->logger->debug('Worker fail/complete/exception event.', [
+                    'worker' => $connection->getRemoteAddress()
+                    , 'type' => $packet->getType()
+                ]);
                 $worker = $this->workerManager->getWorker($connection);
                 $job = $worker->getCurrentJob();
                 $job->sendToWatchers(new BinaryPacket(PacketMagic::RES, $packet->getType(), $packet->getArgumentList()));
@@ -70,6 +98,10 @@ class WorkerPacketHandler extends BinaryPacketHandler {
             $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::NO_JOB));
         } else {
             $job->running = true;
+            $this->logger->info('Assigning job to worker', [
+                'worker' => $connection->getRemoteAddress()
+                , 'job' => $job->jobHandle
+            ]);
             if ($grabType === PacketType::GRAB_JOB){
                 $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_ASSIGN, [
                     $job->jobHandle

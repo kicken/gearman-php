@@ -6,14 +6,17 @@ use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Psr\Log\LoggerInterface;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 
 class PingHandler extends BinaryPacketHandler {
     private Deferred $deferred;
+    private LoggerInterface $logger;
 
-    public function __construct(){
+    public function __construct(LoggerInterface $logger){
         $this->deferred = new Deferred();
+        $this->logger = $logger;
     }
 
     public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
@@ -23,6 +26,8 @@ class PingHandler extends BinaryPacketHandler {
             $sentTime = floatval($packet->getArgument(0));
             $endTime = round(microtime(true), 6);
             $delay = $endTime - $sentTime;
+
+            $this->logger->debug('Received ping from server', ['server' => $connection->getRemoteAddress(), 'delay' => $delay]);
             $this->deferred->resolve($delay);
 
             return true;
@@ -32,6 +37,7 @@ class PingHandler extends BinaryPacketHandler {
     }
 
     public function ping(Connection $connection) : ExtendedPromiseInterface{
+        $this->logger->debug('Sending ping to server', ['server' => $connection->getRemoteAddress()]);
         $time = sprintf('%0.6f', microtime(true));
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::ECHO_REQ, [$time]);
         $connection->writePacket($packet);

@@ -3,7 +3,6 @@
 namespace Kicken\Gearman;
 
 use Kicken\Gearman\Network\Endpoint;
-use Kicken\Gearman\Network\GearmanConnection;
 use Kicken\Gearman\Network\GearmanEndpoint;
 use React\EventLoop\LoopInterface;
 
@@ -35,7 +34,7 @@ function fromBigEndian(string $data) : int{
  * @param string|string[]|Endpoint|Endpoint[] $serverList
  * @param ?LoopInterface $loop
  *
- * @return GearmanConnection[]
+ * @return Endpoint[]
  */
 function mapToEndpointObjects($serverList, ?LoopInterface $loop) : array{
     if (!is_array($serverList)){

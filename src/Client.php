@@ -37,9 +37,11 @@ use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Network\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Network\PacketHandler\PingHandler;
+use Psr\Log\LoggerAwareTrait;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\ExtendedPromiseInterface;
+use Throwable;
 use function React\Promise\resolve;
 
 /**
@@ -48,6 +50,8 @@ use function React\Promise\resolve;
  * @package Kicken\Gearman
  */
 class Client {
+    use LoggerAwareTrait;
+
     /** @var Endpoint[] */
     private array $serverList;
 
@@ -66,7 +70,7 @@ class Client {
     public function pingServer() : ExtendedPromiseInterface{
         /** @noinspection PhpIncompatibleReturnTypeInspection */
         return $this->connect()->then(function(Connection $connection){
-            return (new PingHandler())->ping($connection);
+            return (new PingHandler($this->logger))->ping($connection);
         });
     }
 
@@ -129,7 +133,7 @@ class Client {
 
         /** @noinspection PhpIncompatibleReturnTypeInspection */
         return $this->connect()->then(function(Connection $server) use ($data){
-            return (new JobStatusHandler($data))->waitForResult($server);
+            return (new JobStatusHandler($data, $this->logger))->waitForResult($server);
         })->then(function() use ($data){
             return new JobStatus($data);
         });
@@ -142,7 +146,7 @@ class Client {
      * @return ExtendedPromiseInterface
      */
     private function createJob(Connection $server, ClientJobData $jobDetails) : ExtendedPromiseInterface{
-        return (new CreateJobHandler($jobDetails))->createJob($server);
+        return (new CreateJobHandler($jobDetails, $this->logger))->createJob($server);
     }
 
     private function connect() : ExtendedPromiseInterface{
@@ -157,10 +161,15 @@ class Client {
         /** @var Endpoint[] $queue */
         $queue = $this->serverList;
         $firstServer = array_shift($queue);
-        $failureHandler = function() use (&$queue, &$failureHandler){
+        $failureHandler = function(Throwable $error) use (&$queue, &$failureHandler){
+            if (!$error instanceof CouldNotConnectException){
+                throw $error;
+            }
+
+            $this->logger->warning($error->getMessage(), ['endpoint' => $error->getEndpoint()->getAddress()]);
             $nextServer = array_shift($queue);
             if (!$nextServer){
-                throw new CouldNotConnectException();
+                throw $error;
             }
 
             return $nextServer->connect()->otherwise($failureHandler);
@@ -168,6 +177,7 @@ class Client {
 
 
         return $this->pendingServerAttempt = $firstServer->connect()->otherwise($failureHandler)->then(function(Connection $server){
+            $this->logger->info('Successfully connected to server', ['endpoint' => $server->getRemoteAddress()]);
             $this->connectedServer = $server;
             $this->pendingServerAttempt = null;
 

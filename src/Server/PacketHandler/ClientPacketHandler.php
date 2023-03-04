@@ -10,12 +10,15 @@ use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Server\JobQueue;
+use Psr\Log\LoggerInterface;
 
 class ClientPacketHandler extends BinaryPacketHandler {
     private JobQueue $jobQueue;
+    private LoggerInterface $logger;
 
-    public function __construct(JobQueue $jobQueue){
+    public function __construct(JobQueue $jobQueue, LoggerInterface $logger){
         $this->jobQueue = $jobQueue;
+        $this->logger = $logger;
     }
 
     public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
@@ -50,6 +53,13 @@ class ClientPacketHandler extends BinaryPacketHandler {
         $function = $packet->getArgument(0);
         $uniqueId = $packet->getArgument(1);
         $workload = $packet->getArgument(2);
+        $this->logger->info('Processing create job command.', [
+            'priority' => $priority
+            , 'background' => $background
+            , 'function' => $function
+            , 'uniqueId' => $uniqueId
+            , 'handle' => $newHandle
+        ]);
 
         $job = new ServerJobData($newHandle, $function, $uniqueId, $workload, $priority, $background);
         $this->jobQueue->enqueue($job);
@@ -60,6 +70,7 @@ class ClientPacketHandler extends BinaryPacketHandler {
     }
 
     private function jobStatus(Connection $connection, string $handle) : void{
+        $this->logger->info('Processing job status command', ['handle' => $handle]);
         $job = $this->jobQueue->lookupJob($handle);
         if (!$job){
             $packet = new BinaryPacket(PacketMagic::RES, PacketType::STATUS_RES, [
@@ -83,6 +94,7 @@ class ClientPacketHandler extends BinaryPacketHandler {
     }
 
     private function handlePing(Connection $connection, array $argumentList) : void{
+        $this->logger->info('Processing ping command');
         $packet = new BinaryPacket(PacketMagic::RES, PacketType::ECHO_RES, $argumentList);
         $connection->writePacket($packet);
     }
