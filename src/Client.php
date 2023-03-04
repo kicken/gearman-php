@@ -36,6 +36,7 @@ use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Network\PacketHandler\JobStatusHandler;
+use Kicken\Gearman\Network\PacketHandler\PingHandler;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\ExtendedPromiseInterface;
@@ -60,6 +61,13 @@ class Client {
      */
     public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
         $this->serverList = mapToEndpointObjects($serverList, $loop ?? Loop::get());
+    }
+
+    public function pingServer() : ExtendedPromiseInterface{
+        /** @noinspection PhpIncompatibleReturnTypeInspection */
+        return $this->connect()->then(function(Connection $connection){
+            return (new PingHandler())->ping($connection);
+        });
     }
 
     /**

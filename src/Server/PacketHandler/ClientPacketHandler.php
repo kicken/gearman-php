@@ -35,6 +35,9 @@ class ClientPacketHandler extends BinaryPacketHandler {
             case PacketType::GET_STATUS:
                 $this->jobStatus($connection, $packet->getArgument(0));
                 break;
+            case PacketType::ECHO_REQ:
+                $this->handlePing($connection, $packet->getArgumentList());
+                break;
             default:
                 return false;
         }
@@ -56,7 +59,7 @@ class ClientPacketHandler extends BinaryPacketHandler {
         }
     }
 
-    private function jobStatus(Connection $connection, string $handle){
+    private function jobStatus(Connection $connection, string $handle) : void{
         $job = $this->jobQueue->lookupJob($handle);
         if (!$job){
             $packet = new BinaryPacket(PacketMagic::RES, PacketType::STATUS_RES, [
@@ -76,6 +79,11 @@ class ClientPacketHandler extends BinaryPacketHandler {
             ]);
         }
 
+        $connection->writePacket($packet);
+    }
+
+    private function handlePing(Connection $connection, array $argumentList) : void{
+        $packet = new BinaryPacket(PacketMagic::RES, PacketType::ECHO_RES, $argumentList);
         $connection->writePacket($packet);
     }
 
