@@ -29,5 +29,10 @@
   "require-dev": {
     "phpunit/phpunit": "^9.0",
     "ext-json": "*"
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-v2-rewrite": "2.0.x-dev"
+    }
   }
 }
