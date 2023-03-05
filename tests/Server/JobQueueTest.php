@@ -64,7 +64,7 @@ class JobQueueTest extends TestCase {
 
         $mockWorker->method('canDo')->with($this->isInstanceOf(ServerJobData::class))->willReturn(true);
         $dequeueOrder = [];
-        while ($job = $this->testQueue->findJob($mockWorker)){
+        while ($job = $this->testQueue->assignJob($mockWorker)){
             $dequeueOrder[] = $job->workload;
         }
 

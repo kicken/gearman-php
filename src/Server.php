@@ -8,8 +8,10 @@ use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\PacketHandler\AdminPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\ClientPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\WorkerPacketHandler;
+use Kicken\Gearman\Server\Statistics;
 use Kicken\Gearman\Server\WorkerManager;
 use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
@@ -22,6 +24,7 @@ class Server {
     private LoopInterface $loop;
     private WorkerManager $workerRegistry;
     private JobQueue $jobQueue;
+    private Statistics $statistics;
 
     public function __construct($endpointList = '127.0.0.1:4730', LoopInterface $loop = null){
         if (!is_array($endpointList)){
@@ -33,6 +36,12 @@ class Server {
         $this->endpointList = mapToEndpointObjects($endpointList, $this->loop);
         $this->workerRegistry = new WorkerManager();
         $this->jobQueue = new JobQueue($this->workerRegistry);
+        $this->statistics = new Statistics($this->workerRegistry, $this->jobQueue, $this->logger);
+    }
+
+    public function setLogger(LoggerInterface $logger){
+        $this->logger=$logger;
+        $this->statistics->setLogger($logger);
     }
 
     public function run(){
@@ -40,7 +49,7 @@ class Server {
             $this->logger->info('Listening on ' . $endpoint->getAddress());
             $endpoint->listen(function(Connection $stream){
                 $this->logger->info('Received connection from ' . $stream->getRemoteAddress());
-                $stream->addPacketHandler(new AdminPacketHandler($this->workerRegistry, $this->logger));
+                $stream->addPacketHandler(new AdminPacketHandler($this->statistics, $this->logger));
                 $stream->addPacketHandler(new ClientPacketHandler($this->jobQueue, $this->logger));
                 $stream->addPacketHandler(new WorkerPacketHandler($this->workerRegistry, $this->jobQueue, $this->logger));
                 $stream->addDisconnectHandler(function(Connection $connection){

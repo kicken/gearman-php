@@ -2,9 +2,13 @@
 
 namespace Kicken\Gearman\Server;
 
+use Kicken\Gearman\Events\EventEmitter;
+use Kicken\Gearman\Events\ServerEvents;
 use Kicken\Gearman\Job\Data\ServerJobData;
 
 class JobQueue {
+    use EventEmitter;
+
     private \SplPriorityQueue $queue;
     private array $handleMap = [];
     private WorkerManager $workerRegistry;
@@ -18,13 +22,17 @@ class JobQueue {
         $this->queue->insert($job, $job->priority);
         $this->handleMap[$job->jobHandle] = $job;
         $this->workerRegistry->wakeAllCandidates($job);
+        $this->emit(ServerEvents::JOB_QUEUED, $job);
     }
 
-    public function findJob(Worker $worker) : ?ServerJobData{
+    public function assignJob(Worker $worker) : ?ServerJobData{
         $unassigned = [];
         try {
             while ($job = $this->queue->extract()){
                 if ($worker->canDo($job)){
+                    $worker->assignJob($job);
+                    $this->emit(ServerEvents::JOB_STARTED, $job);
+
                     return $job;
                 }
 
@@ -44,7 +52,12 @@ class JobQueue {
     }
 
     public function deleteJob(ServerJobData $jobData){
+        if ($jobData->running){
+            $this->emit(ServerEvents::JOB_STOPPED, $jobData);
+        }
+
         unset($this->handleMap[$jobData->jobHandle]);
+        $this->emit(ServerEvents::JOB_REMOVED, $jobData);
         $nonMatches = [];
         try {
             while ($queuedJob = $this->queue->extract()){

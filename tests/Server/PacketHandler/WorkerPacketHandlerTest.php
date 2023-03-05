@@ -49,7 +49,7 @@ class WorkerPacketHandlerTest extends TestCase {
     public function testGrabJob(){
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::GRAB_JOB, []);
         $this->expectGetWorkerCall();
-        $this->queue->expects($this->once())->method('findJob')->with($this->worker)->willReturn($this->job);
+        $this->queue->expects($this->once())->method('assignJob')->with($this->worker)->willReturn($this->job);
         $this->handler->handlePacket($this->connection, $packet);
     }
 
