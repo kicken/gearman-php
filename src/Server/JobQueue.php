@@ -51,27 +51,6 @@ class JobQueue {
         return $this->handleMap[$handle] ?? null;
     }
 
-    public function deleteJob(ServerJobData $jobData){
-        if ($jobData->running){
-            $this->emit(ServerEvents::JOB_STOPPED, $jobData);
-        }
-
-        unset($this->handleMap[$jobData->jobHandle]);
-        $this->emit(ServerEvents::JOB_REMOVED, $jobData);
-        $nonMatches = [];
-        try {
-            while ($queuedJob = $this->queue->extract()){
-                if ($queuedJob !== $jobData){
-                    $nonMatches[] = $queuedJob;
-                }
-            }
-        } catch (\RuntimeException $ex){
-
-        } finally {
-            $this->requeue($nonMatches);
-        }
-    }
-
     private function requeue(array $jobList) : void{
         /** @var ServerJobData $job */
         foreach ($jobList as $job){

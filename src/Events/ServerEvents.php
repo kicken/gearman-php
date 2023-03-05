@@ -10,7 +10,6 @@ final class ServerEvents {
     const JOB_QUEUED = __CLASS__ . '::JOB_QUEUED';
     const JOB_STARTED = __CLASS__ . '::JOB_STARTED';
     const JOB_STOPPED = __CLASS__ . '::JOB_STOPPED';
-    const JOB_REMOVED = __CLASS__ . '::JOB_REMOVED';
 
     private function __construct(){
     }

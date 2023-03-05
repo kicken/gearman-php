@@ -82,7 +82,6 @@ class WorkerPacketHandler extends BinaryPacketHandler {
                 $worker = $this->workerManager->getWorker($connection);
                 $job = $worker->getCurrentJob();
                 if ($job){
-                    $this->jobQueue->deleteJob($job);
                     $job->running = false;
                     $job->sendToWatchers(new BinaryPacket(PacketMagic::RES, $packet->getType(), $packet->getArgumentList()));
                     $worker->assignJob(null);

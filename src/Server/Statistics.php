@@ -19,15 +19,25 @@ class Statistics {
         $registry->on(ServerEvents::WORKER_CONNECTED, function(Worker $worker){
             $this->logger->debug('New worker connected, Updating worker statistics.');
             $this->workerList[] = WeakReference::create($worker);
-            $worker->on(ServerEvents::WORKER_REGISTERED_FUNCTION, function(Worker $worker, string $function){
+            $worker->on(ServerEvents::WORKER_REGISTERED_FUNCTION, function(string $function){
                 $this->logger->debug('Incrementing available worker statistic for ' . $function . '.');
                 $stats = &$this->getFunctionQueueStats($function);
                 $stats['workers'] += 1;
             });
-            $worker->on(ServerEvents::WORKER_UNREGISTERED_FUNCTION, function(Worker $worker, string $function){
+            $worker->on(ServerEvents::WORKER_UNREGISTERED_FUNCTION, function(string $function){
                 $this->logger->debug('Decrementing available worker statistic for ' . $function . '.');
                 $stats = &$this->getFunctionQueueStats($function);
                 $stats['workers'] -= 1;
+            });
+            $worker->on(ServerEvents::JOB_STARTED, function(ServerJobData $job){
+                $this->logger->debug('Incrementing running jobs statistic for ' . $job->function);
+                $stats = &$this->getFunctionQueueStats($job->function);
+                $stats['running'] += 1;
+            });
+            $worker->on(ServerEvents::JOB_STOPPED, function(ServerJobData $job){
+                $this->logger->debug('Decrementing running jobs statistic for ' . $job->function);
+                $stats = &$this->getFunctionQueueStats($job->function);
+                $stats['running'] -= 1;
             });
         });
 
@@ -46,21 +56,6 @@ class Statistics {
             $this->logger->debug('Incrementing total jobs statistic for ' . $job->function);
             $stats = &$this->getFunctionQueueStats($job->function);
             $stats['total'] += 1;
-        });
-        $jobQueue->on(ServerEvents::JOB_STARTED, function(ServerJobData $job){
-            $this->logger->debug('Incrementing running jobs statistic for ' . $job->function);
-            $stats = &$this->getFunctionQueueStats($job->function);
-            $stats['running'] += 1;
-        });
-        $jobQueue->on(ServerEvents::JOB_STOPPED, function(ServerJobData $job){
-            $this->logger->debug('Decrementing running jobs statistic for ' . $job->function);
-            $stats = &$this->getFunctionQueueStats($job->function);
-            $stats['running'] -= 1;
-        });
-        $jobQueue->on(ServerEvents::JOB_REMOVED, function(ServerJobData $job){
-            $this->logger->debug('Decrementing total jobs statistic for ' . $job->function);
-            $stats = &$this->getFunctionQueueStats($job->function);
-            $stats['total'] -= 1;
         });
     }
 

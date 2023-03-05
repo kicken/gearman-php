@@ -42,23 +42,6 @@ class JobQueueTest extends TestCase {
         $this->assertNull($job);
     }
 
-    public function testDeleteJobSuccessful(){
-        $job = $this->testQueue->lookupJob('H:2');
-        $this->testQueue->deleteJob($job);
-
-        $this->assertNull($this->testQueue->lookupJob('H:2'));
-    }
-
-    public function testDeleteJobMaintainsPriority(){
-        $job = $this->testQueue->lookupJob('H:2');
-        $this->testQueue->deleteJob($job);
-
-        $dequeueOrder = $this->dequeueAllJobs();
-
-        $this->assertCount(5, $dequeueOrder);
-        $this->assertEquals(['high', 'high', 'normal', 'low', 'low'], $dequeueOrder);
-    }
-
     private function dequeueAllJobs() : array{
         $mockWorker = $this->getMockBuilder(Worker::class)->disableOriginalConstructor()->getMock();
 

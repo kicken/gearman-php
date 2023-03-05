@@ -38,12 +38,12 @@ class Worker {
 
     public function registerFunction(string $function, ?int $timeout = null){
         $this->functionList[$function] = $timeout;
-        $this->emit(ServerEvents::WORKER_REGISTERED_FUNCTION, $this, $function);
+        $this->emit(ServerEvents::WORKER_REGISTERED_FUNCTION, $function);
     }
 
     public function unregisterFunction(string $function){
         unset($this->functionList[$function]);
-        $this->emit(ServerEvents::WORKER_UNREGISTERED_FUNCTION, $this, $function);
+        $this->emit(ServerEvents::WORKER_UNREGISTERED_FUNCTION, $function);
     }
 
     public function isSleeping() : bool{
@@ -75,7 +75,14 @@ class Worker {
     }
 
     public function assignJob(?ServerJobData $jobData){
+        if (!$jobData && $this->currentAssignment){
+            $this->emit(ServerEvents::JOB_STOPPED, $this->currentAssignment);
+        }
+
         $this->currentAssignment = $jobData;
+        if ($jobData){
+            $this->emit(ServerEvents::JOB_STARTED, $jobData);
+        }
     }
 
     public function getCurrentJob() : ?ServerJobData{
