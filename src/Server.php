@@ -82,6 +82,8 @@ class Server {
 
         if (!$graceful){
             $this->workerRegistry->disconnectAll();
+        } else {
+            $this->workerRegistry->disconnectSleeping();
         }
     }
 }

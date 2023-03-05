@@ -46,6 +46,10 @@ class Worker {
         $this->emit(ServerEvents::WORKER_UNREGISTERED_FUNCTION, $this, $function);
     }
 
+    public function isSleeping() : bool{
+        return $this->sleeping;
+    }
+
     public function sleep(){
         $this->sleeping = true;
     }

@@ -44,12 +44,24 @@ class WorkerManager {
         $this->emit(ServerEvents::WORKER_DISCONNECTED, $worker);
     }
 
-    public function disconnectAll(){
+    public function disconnectAll() : void{
+        $this->disconnectByFilter();
+    }
+
+    public function disconnectSleeping() : void{
+        $this->disconnectByFilter(function(Worker $worker){
+            return $worker->isSleeping();
+        });
+    }
+
+    private function disconnectByFilter(callable $filter = null){
         $connectionList = iterator_to_array($this->registry);
         /** @var Connection $connection */
         foreach ($connectionList as $connection){
-            $connection->disconnect();
-            $this->removeConnection($connection);
+            if (!$filter || call_user_func($filter, $this->getWorker($connection))){
+                $connection->disconnect();
+                $this->removeConnection($connection);
+            }
         }
     }
 }
