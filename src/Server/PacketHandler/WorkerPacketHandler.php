@@ -7,16 +7,19 @@ use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Kicken\Gearman\Server;
 use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\WorkerManager;
 use Psr\Log\LoggerInterface;
 
 class WorkerPacketHandler extends BinaryPacketHandler {
+    private Server $server;
     private WorkerManager $workerManager;
     private JobQueue $jobQueue;
     private LoggerInterface $logger;
 
-    public function __construct(WorkerManager $manager, JobQueue $jobQueue, LoggerInterface $logger){
+    public function __construct(Server $server, WorkerManager $manager, JobQueue $jobQueue, LoggerInterface $logger){
+        $this->server = $server;
         $this->workerManager = $manager;
         $this->jobQueue = $jobQueue;
         $this->logger = $logger;
@@ -96,7 +99,11 @@ class WorkerPacketHandler extends BinaryPacketHandler {
         $worker = $this->workerManager->getWorker($connection);
         $job = $this->jobQueue->assignJob($worker);
         if (!$job){
-            $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::NO_JOB));
+            if ($this->server->isShutdown()){
+                $connection->disconnect();
+            } else {
+                $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::NO_JOB));
+            }
         } else {
             $job->running = true;
             $this->logger->info('Assigning job to worker', [

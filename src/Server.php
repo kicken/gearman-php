@@ -25,6 +25,7 @@ class Server {
     private WorkerManager $workerRegistry;
     private JobQueue $jobQueue;
     private Statistics $statistics;
+    private bool $isShutdown = false;
 
     public function __construct($endpointList = '127.0.0.1:4730', LoopInterface $loop = null){
         if (!is_array($endpointList)){
@@ -39,8 +40,12 @@ class Server {
         $this->statistics = new Statistics($this->workerRegistry, $this->jobQueue, $this->logger);
     }
 
+    public function isShutdown() : bool{
+        return $this->isShutdown;
+    }
+
     public function setLogger(LoggerInterface $logger){
-        $this->logger=$logger;
+        $this->logger = $logger;
         $this->statistics->setLogger($logger);
     }
 
@@ -49,9 +54,9 @@ class Server {
             $this->logger->info('Listening on ' . $endpoint->getAddress());
             $endpoint->listen(function(Connection $stream){
                 $this->logger->info('Received connection from ' . $stream->getRemoteAddress());
-                $stream->addPacketHandler(new AdminPacketHandler($this->statistics, $this->logger));
+                $stream->addPacketHandler(new AdminPacketHandler($this, $this->statistics, $this->logger));
                 $stream->addPacketHandler(new ClientPacketHandler($this->jobQueue, $this->logger));
-                $stream->addPacketHandler(new WorkerPacketHandler($this->workerRegistry, $this->jobQueue, $this->logger));
+                $stream->addPacketHandler(new WorkerPacketHandler($this, $this->workerRegistry, $this->jobQueue, $this->logger));
                 $stream->addDisconnectHandler(function(Connection $connection){
                     $this->logger->info('Lost connection to ' . $connection->getRemoteAddress());
                     $worker = $this->workerRegistry->getWorker($connection);
@@ -66,5 +71,17 @@ class Server {
         }
 
         $this->loop->run();
+    }
+
+    public function shutdown(bool $graceful = true) : void{
+        $this->logger->notice('Server shutdown requested.', ['graceful' => $graceful]);
+        $this->isShutdown = true;
+        foreach ($this->endpointList as $endpoint){
+            $endpoint->shutdown();
+        }
+
+        if (!$graceful){
+            $this->workerRegistry->disconnectAll();
+        }
     }
 }

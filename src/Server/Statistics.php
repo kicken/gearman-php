@@ -96,7 +96,12 @@ class Statistics {
     }
 
     private function implodeList(array $list) : string{
-        return implode("\r\n", $list) . "\r\n.";
+        $response = implode("\r\n", $list);
+        if ($response !== ''){
+            $response .= "\r\n";
+        }
+
+        return $response . '.';
     }
 
     private function &getFunctionQueueStats(string $function) : array{

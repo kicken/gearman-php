@@ -55,7 +55,7 @@ class PacketBuffer {
     private function extractAdministrativePacket() : AdministrativePacket{
         $this->begin();
         $command = $this->extractLine();
-        $packet = new AdministrativePacket($command);
+        $packet = new AdministrativeCommandPacket($command);
         $this->commit();
 
         return $packet;

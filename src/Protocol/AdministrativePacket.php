@@ -3,17 +3,17 @@
 namespace Kicken\Gearman\Protocol;
 
 class AdministrativePacket implements Packet {
-    private string $command;
+    private string $data;
 
     public function __construct(string $command){
-        $this->command = strtolower(trim($command));
+        $this->data = $command;
     }
 
-    public function getCommand() : string{
-        return $this->command;
+    public function getData() : string{
+        return $this->data;
     }
 
     public function __toString(){
-        return $this->command . "\r\n";
+        return $this->data . "\r\n";
     }
 }

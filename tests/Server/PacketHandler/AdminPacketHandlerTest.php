@@ -26,7 +26,7 @@ class AdminPacketHandlerTest extends TestCase {
     public function testHandlesVersionCommand(){
         $packet = new AdministrativePacket('version');
         $this->connection->expects($this->once())->method('writePacket')->with($this->callback(function($packet){
-            return $packet instanceof AdministrativePacket && $packet->getCommand() === 'v0.0.1';
+            return $packet instanceof AdministrativePacket && $packet->getData() === 'v0.0.1';
         }));
         $this->handler->handleAdministrativePacket($this->connection, $packet);
     }

@@ -86,4 +86,12 @@ class GearmanEndpoint implements Endpoint {
 
         return true;
     }
+
+    public function shutdown(){
+        $this->loop->removeWriteStream($this->stream);
+        $this->loop->removeReadStream($this->stream);
+        stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
+        fclose($this->stream);
+        $this->stream = null;
+    }
 }

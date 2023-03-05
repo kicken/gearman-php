@@ -10,4 +10,6 @@ interface Endpoint {
     public function getAddress() : string;
 
     public function listen(callable $handler);
+
+    public function shutdown();
 }

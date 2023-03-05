@@ -43,4 +43,13 @@ class WorkerManager {
         $this->registry->detach($connection);
         $this->emit(ServerEvents::WORKER_DISCONNECTED, $worker);
     }
+
+    public function disconnectAll(){
+        $connectionList = iterator_to_array($this->registry);
+        /** @var Connection $connection */
+        foreach ($connectionList as $connection){
+            $connection->disconnect();
+            $this->removeConnection($connection);
+        }
+    }
 }
