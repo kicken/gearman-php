@@ -54,6 +54,7 @@ class Client {
 
     /** @var Endpoint[] */
     private array $serverList;
+    private bool $autoDisconnect = true;
 
     private ?Connection $connectedServer = null;
     private ?ExtendedPromiseInterface $pendingServerAttempt = null;
@@ -65,6 +66,10 @@ class Client {
      */
     public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
         $this->serverList = mapToEndpointObjects($serverList, $loop ?? Loop::get());
+    }
+
+    public function setAutoDisconnect(bool $autoDisconnect) : void{
+        $this->autoDisconnect = $autoDisconnect;
     }
 
     public function pingServer() : ExtendedPromiseInterface{
@@ -139,6 +144,13 @@ class Client {
         });
     }
 
+    public function disconnect() : void{
+        if ($this->connectedServer){
+            $this->connectedServer->disconnect();
+            $this->connectedServer = null;
+        }
+    }
+
     /**
      * @param Connection $server
      * @param ClientJobData $jobDetails
@@ -180,6 +192,7 @@ class Client {
             $this->logger->info('Successfully connected to server', ['endpoint' => $server->getRemoteAddress()]);
             $this->connectedServer = $server;
             $this->pendingServerAttempt = null;
+            $this->connectedServer->setAutoDisconnect($this->autoDisconnect);
 
             return $server;
         });

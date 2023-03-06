@@ -12,6 +12,8 @@ interface Connection {
 
     public function isConnected() : bool;
 
+    public function setAutoDisconnect(bool $autoDisconnect);
+
     public function writePacket(Packet $packet) : void;
 
     public function disconnect() : void;

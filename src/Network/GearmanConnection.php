@@ -14,6 +14,7 @@ class GearmanConnection implements Connection {
     /** @var resource */
     private $stream;
     private string $remoteAddress;
+    private bool $autoDisconnect = true;
 
     /** @var callable[] */
     private array $disconnectHandlerList = [];
@@ -49,6 +50,10 @@ class GearmanConnection implements Connection {
         return $this->stream !== null;
     }
 
+    public function setAutoDisconnect(bool $autoDisconnect) : void{
+        $this->autoDisconnect = $autoDisconnect;
+    }
+
     public function writePacket(Packet $packet) : void{
         $this->writeBuffer .= $packet;
         $this->flush();
@@ -74,7 +79,7 @@ class GearmanConnection implements Connection {
         $key = array_search($handler, $this->packetHandlerList, true);
         if ($key !== false){
             unset($this->packetHandlerList[$key]);
-            if (!$this->packetHandlerList){
+            if (!$this->packetHandlerList && $this->autoDisconnect){
                 $this->disconnect();
             }
         }
