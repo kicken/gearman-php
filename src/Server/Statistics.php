@@ -38,6 +38,7 @@ class Statistics {
                 $this->logger->debug('Decrementing running jobs statistic for ' . $job->function);
                 $stats = &$this->getFunctionQueueStats($job->function);
                 $stats['running'] -= 1;
+                $stats['total'] -= 1;
             });
         });
 
