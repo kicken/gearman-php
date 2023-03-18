@@ -16,6 +16,11 @@ class JobQueue {
     public function __construct(WorkerManager $workerRegistry){
         $this->queue = new \SplPriorityQueue();
         $this->workerRegistry = $workerRegistry;
+        $this->workerRegistry->on(ServerEvents::WORKER_CONNECTED, function(Worker $worker){
+            $worker->on(ServerEvents::JOB_STOPPED, function(ServerJobData $job){
+                unset($this->handleMap[$job->jobHandle]);
+            });
+        });
     }
 
     public function enqueue(ServerJobData $job){
