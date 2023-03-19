@@ -1,8 +1,8 @@
 <?php
 
-namespace Kicken\Gearman\Job;
+namespace Kicken\Gearman\Client;
 
-class ClientForegroundJob extends ClientJob {
+class ForegroundJob extends ClientJob {
     public function onStatus(callable $fn) : self{
         $this->addCallback('status', $fn);
 

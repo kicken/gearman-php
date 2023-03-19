@@ -2,10 +2,10 @@
 
 namespace Kicken\Gearman\Test\Server;
 
-use Kicken\Gearman\Job\Data\ServerJobData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
+use Kicken\Gearman\Server\ServerJobData;
 use Kicken\Gearman\Server\Worker;
 use PHPUnit\Framework\TestCase;
 

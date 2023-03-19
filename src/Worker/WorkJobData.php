@@ -22,49 +22,23 @@
  *
  */
 
-namespace Kicken\Gearman\Job;
+namespace Kicken\Gearman\Worker;
 
-use Kicken\Gearman\Job\Data\ClientJobData;
+
 use Kicken\Gearman\Job\Data\JobData;
 
-/**
- * Provides information regarding a job to a client.
- *
- * @package Kicken\Gearman\Job
- */
-abstract class ClientJob extends Job {
-    /** @var JobData|ClientJobData */
-    protected JobData $data;
+class WorkJobData extends JobData {
+    public bool $finished = false;
+    public string $unique;
+    public string $function;
+    public int $priority;
+    public string $workload;
 
-    public function __construct(ClientJobData $jobDetails){
-        $this->data = $jobDetails;
-    }
-
-    public function getUniqueId() : string{
-        return $this->data->unique;
-    }
-
-    public function getFunction() : string{
-        return $this->data->function;
-    }
-
-    public function isFinished() : bool{
-        return $this->data->finished;
-    }
-
-    public function getPriority() : int{
-        return $this->data->priority;
-    }
-
-    public function getWorkload() : string{
-        return $this->data->workload;
-    }
-
-    public function getResult() : string{
-        return $this->data->result;
-    }
-
-    public function getData() : string{
-        return $this->data->data;
+    public function __construct(?string $jobHandle, string $function, ?string $unique, int $priority, string $workload){
+        parent::__construct($jobHandle);
+        $this->function = $function;
+        $this->unique = $unique;
+        $this->priority = $priority;
+        $this->workload = $workload;
     }
 }

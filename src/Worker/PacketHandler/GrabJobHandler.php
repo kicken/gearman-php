@@ -1,14 +1,15 @@
 <?php
 
-namespace Kicken\Gearman\Network\PacketHandler;
+namespace Kicken\Gearman\Worker\PacketHandler;
 
-use Kicken\Gearman\Job\Data\WorkJobData;
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Job\WorkerJob;
 use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Kicken\Gearman\Worker\WorkerJob;
+use Kicken\Gearman\Worker\WorkJobData;
 use Psr\Log\LoggerInterface;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;

@@ -2,9 +2,9 @@
 
 namespace Kicken\Gearman\Test\Network\PacketHandler;
 
+use Kicken\Gearman\Client\JobStatus;
+use Kicken\Gearman\Client\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Job\Data\JobStatusData;
-use Kicken\Gearman\Job\JobStatus;
-use Kicken\Gearman\Network\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\IncomingPacket;

@@ -3,7 +3,6 @@
 namespace Kicken\Gearman\Server;
 
 use Kicken\Gearman\Events\ServerEvents;
-use Kicken\Gearman\Job\Data\ServerJobData;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WeakReference;

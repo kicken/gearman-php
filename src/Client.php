@@ -24,19 +24,19 @@
 
 namespace Kicken\Gearman;
 
+use Kicken\Gearman\Client\BackgroundJob;
+use Kicken\Gearman\Client\ForegroundJob;
+use Kicken\Gearman\Client\ClientJobData;
+use Kicken\Gearman\Client\JobStatus;
+use Kicken\Gearman\Client\PacketHandler\CreateJobHandler;
+use Kicken\Gearman\Client\PacketHandler\JobStatusHandler;
+use Kicken\Gearman\Client\PacketHandler\PingHandler;
 use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\EmptyServerListException;
-use Kicken\Gearman\Job\ClientBackgroundJob;
-use Kicken\Gearman\Job\ClientForegroundJob;
-use Kicken\Gearman\Job\Data\ClientJobData;
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Job\JobStatus;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\Endpoint;
-use Kicken\Gearman\Network\PacketHandler\CreateJobHandler;
-use Kicken\Gearman\Network\PacketHandler\JobStatusHandler;
-use Kicken\Gearman\Network\PacketHandler\PingHandler;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
@@ -99,7 +99,7 @@ class Client {
         return $this->connect()->then(function(Connection $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
-            return new ClientForegroundJob($jobDetails);
+            return new ForegroundJob($jobDetails);
         });
     }
 
@@ -123,7 +123,7 @@ class Client {
         return $this->connect()->then(function(Connection $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
-            return new ClientBackgroundJob($jobDetails, $this);
+            return new BackgroundJob($jobDetails, $this);
         });
     }
 

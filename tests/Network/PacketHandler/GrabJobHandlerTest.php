@@ -2,13 +2,13 @@
 
 namespace Kicken\Gearman\Test\Network\PacketHandler;
 
-use Kicken\Gearman\Job\WorkerJob;
-use Kicken\Gearman\Network\PacketHandler\GrabJobHandler;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
 use Kicken\Gearman\Test\Network\PacketPlaybackConnection;
+use Kicken\Gearman\Worker\PacketHandler\GrabJobHandler;
+use Kicken\Gearman\Worker\WorkerJob;
 use PHPUnit\Framework\TestCase;
 
 class GrabJobHandlerTest extends TestCase {

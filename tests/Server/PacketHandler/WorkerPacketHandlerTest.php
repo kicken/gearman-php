@@ -2,7 +2,6 @@
 
 namespace Kicken\Gearman\Test\Server\PacketHandler;
 
-use Kicken\Gearman\Job\Data\ServerJobData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
@@ -10,6 +9,7 @@ use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\PacketHandler\WorkerPacketHandler;
+use Kicken\Gearman\Server\ServerJobData;
 use Kicken\Gearman\Server\Worker;
 use Kicken\Gearman\Server\WorkerManager;
 use PHPUnit\Framework\TestCase;

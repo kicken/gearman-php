@@ -1,6 +1,8 @@
 <?php
 
-namespace Kicken\Gearman\Job\Data;
+namespace Kicken\Gearman\Client;
+
+use Kicken\Gearman\Job\Data\JobData;
 
 class ClientJobData extends JobData {
     public string $function;

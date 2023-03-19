@@ -1,8 +1,9 @@
 <?php
 
-namespace Kicken\Gearman\Network\PacketHandler;
+namespace Kicken\Gearman\Client\PacketHandler;
 
 use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;

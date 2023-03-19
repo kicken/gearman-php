@@ -2,9 +2,9 @@
 
 namespace Kicken\Gearman\Test\Server;
 
-use Kicken\Gearman\Job\Data\ServerJobData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Server\JobQueue;
+use Kicken\Gearman\Server\ServerJobData;
 use Kicken\Gearman\Server\Worker;
 use Kicken\Gearman\Server\WorkerManager;
 use PHPUnit\Framework\TestCase;

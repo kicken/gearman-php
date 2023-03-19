@@ -27,13 +27,13 @@ namespace Kicken\Gearman;
 
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
-use Kicken\Gearman\Job\WorkerJob;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\Endpoint;
-use Kicken\Gearman\Network\PacketHandler\GrabJobHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Kicken\Gearman\Worker\PacketHandler\GrabJobHandler;
+use Kicken\Gearman\Worker\WorkerJob;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;

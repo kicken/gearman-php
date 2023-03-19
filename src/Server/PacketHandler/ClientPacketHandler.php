@@ -2,7 +2,6 @@
 
 namespace Kicken\Gearman\Server\PacketHandler;
 
-use Kicken\Gearman\Job\Data\ServerJobData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
@@ -10,6 +9,7 @@ use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Server\JobQueue;
+use Kicken\Gearman\Server\ServerJobData;
 use Psr\Log\LoggerInterface;
 
 class ClientPacketHandler extends BinaryPacketHandler {

@@ -22,21 +22,24 @@
  *
  */
 
-namespace Kicken\Gearman\Job\Data;
+namespace Kicken\Gearman\Client;
 
+use Kicken\Gearman\Job\Data\JobData;
+use Kicken\Gearman\Job\Data\JobStatusData;
+use Kicken\Gearman\Job\Job;
 
-class WorkJobData extends JobData {
-    public bool $finished = false;
-    public string $unique;
-    public string $function;
-    public int $priority;
-    public string $workload;
+class JobStatus extends Job {
+    protected JobData $data;
 
-    public function __construct(?string $jobHandle, string $function, ?string $unique, int $priority, string $workload){
-        parent::__construct($jobHandle);
-        $this->function = $function;
-        $this->unique = $unique;
-        $this->priority = $priority;
-        $this->workload = $workload;
+    public function __construct(JobStatusData $details){
+        $this->data = $details;
+    }
+
+    public function isKnown() : bool{
+        return $this->data->isKnown;
+    }
+
+    public function isRunning() : bool{
+        return $this->data->isRunning;
     }
 }

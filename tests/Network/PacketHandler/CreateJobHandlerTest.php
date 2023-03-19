@@ -2,11 +2,11 @@
 
 namespace Kicken\Gearman\Test\Network\PacketHandler;
 
-use Kicken\Gearman\Job\ClientBackgroundJob;
-use Kicken\Gearman\Job\ClientForegroundJob;
-use Kicken\Gearman\Job\Data\ClientJobData;
+use Kicken\Gearman\Client\BackgroundJob;
+use Kicken\Gearman\Client\ForegroundJob;
+use Kicken\Gearman\Client\ClientJobData;
+use Kicken\Gearman\Client\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Network\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 class CreateJobHandlerTest extends TestCase {
     public function testJobHandleIsReceived(){
         $data = new ClientJobData('reverse', 'test', '', JobPriority::NORMAL);
-        $job = new ClientForegroundJob($data);
+        $job = new ForegroundJob($data);
         $handler = new CreateJobHandler($data);
 
         $server = new PacketPlaybackConnection([
@@ -32,7 +32,7 @@ class CreateJobHandlerTest extends TestCase {
     public function testHandlerRemovedAfterJobCreatedForBackgroundJobs(){
         $data = new ClientJobData('reverse', 'test', '', JobPriority::NORMAL);
         $data->background = true;
-        $job = new ClientBackgroundJob($data, null);
+        $job = new BackgroundJob($data, null);
         $handler = new CreateJobHandler($data);
 
         $server = new PacketPlaybackConnection([
@@ -47,7 +47,7 @@ class CreateJobHandlerTest extends TestCase {
 
     public function testForegroundJobStatusCallbackTriggered(){
         /**
-         * @var ClientForegroundJob $job
+         * @var ForegroundJob $job
          * @var CreateJobHandler $handler
          * @var PacketPlaybackConnection $server
          */
@@ -73,7 +73,7 @@ class CreateJobHandlerTest extends TestCase {
 
     public function testForegroundJobDataCallbackTriggered(){
         /**
-         * @var ClientForegroundJob $job
+         * @var ForegroundJob $job
          * @var CreateJobHandler $handler
          * @var PacketPlaybackConnection $server
          */
@@ -98,7 +98,7 @@ class CreateJobHandlerTest extends TestCase {
 
     public function testForegroundJobWarningCallbackTriggered(){
         /**
-         * @var ClientForegroundJob $job
+         * @var ForegroundJob $job
          * @var CreateJobHandler $handler
          * @var PacketPlaybackConnection $server
          */
@@ -123,7 +123,7 @@ class CreateJobHandlerTest extends TestCase {
 
     public function testForegroundJobCompleteCallbackTriggered(){
         /**
-         * @var ClientForegroundJob $job
+         * @var ForegroundJob $job
          * @var CreateJobHandler $handler
          * @var PacketPlaybackConnection $server
          */
@@ -151,7 +151,7 @@ class CreateJobHandlerTest extends TestCase {
 
     public function testForegroundJobFailCallbackTriggered(){
         /**
-         * @var ClientForegroundJob $job
+         * @var ForegroundJob $job
          * @var CreateJobHandler $handler
          * @var PacketPlaybackConnection $server
          */
@@ -173,7 +173,7 @@ class CreateJobHandlerTest extends TestCase {
 
     public function testForegroundJobExceptionCallbackTriggered(){
         /**
-         * @var ClientForegroundJob $job
+         * @var ForegroundJob $job
          * @var CreateJobHandler $handler
          * @var PacketPlaybackConnection $server
          */
@@ -196,7 +196,7 @@ class CreateJobHandlerTest extends TestCase {
 
     public function testOnlyHandlesOwnJobs(){
         /**
-         * @var ClientForegroundJob $job
+         * @var ForegroundJob $job
          * @var CreateJobHandler $handler
          * @var PacketPlaybackConnection $server
          */
@@ -232,7 +232,7 @@ class CreateJobHandlerTest extends TestCase {
 
     private function setupCallbackTest(array $packetSequence) : array{
         $data = new ClientJobData('reverse', 'test', '', JobPriority::NORMAL);
-        $job = new ClientForegroundJob($data);
+        $job = new ForegroundJob($data);
         $handler = new CreateJobHandler($data);
         $server = new PacketPlaybackConnection($packetSequence);
         $server->addPacketHandler($handler);

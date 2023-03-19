@@ -4,7 +4,6 @@ namespace Kicken\Gearman\Server;
 
 use Kicken\Gearman\Events\EventEmitter;
 use Kicken\Gearman\Events\ServerEvents;
-use Kicken\Gearman\Job\Data\ServerJobData;
 use Kicken\Gearman\Network\Connection;
 
 class WorkerManager {

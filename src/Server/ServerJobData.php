@@ -1,7 +1,8 @@
 <?php
 
-namespace Kicken\Gearman\Job\Data;
+namespace Kicken\Gearman\Server;
 
+use Kicken\Gearman\Job\Data\JobData;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\Packet;
 

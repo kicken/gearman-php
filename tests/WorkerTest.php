@@ -2,7 +2,6 @@
 
 namespace Kicken\Gearman\Test;
 
-use Kicken\Gearman\Job\WorkerJob;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\GearmanEndpoint;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -11,6 +10,7 @@ use Kicken\Gearman\Test\Network\AutoPlaybackServer;
 use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
 use Kicken\Gearman\Worker;
+use Kicken\Gearman\Worker\WorkerJob;
 use PHPUnit\Framework\TestCase;
 use function React\Promise\resolve;
 

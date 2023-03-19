@@ -3,9 +3,9 @@
 namespace Kicken\Gearman\Test;
 
 use Kicken\Gearman\Client;
-use Kicken\Gearman\Job\ClientBackgroundJob;
-use Kicken\Gearman\Job\ClientForegroundJob;
-use Kicken\Gearman\Job\JobStatus;
+use Kicken\Gearman\Client\BackgroundJob;
+use Kicken\Gearman\Client\ForegroundJob;
+use Kicken\Gearman\Client\JobStatus;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\GearmanEndpoint;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -35,15 +35,15 @@ class ClientTest extends TestCase {
         $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['created', 'completed'])->getMock();
         $mock->expects($this->once())
             ->method('created')
-            ->with($this->isInstanceOf(ClientForegroundJob::class))
-            ->willReturnCallback(function(ClientForegroundJob $job) use ($mock){
+            ->with($this->isInstanceOf(ForegroundJob::class))
+            ->willReturnCallback(function(ForegroundJob $job) use ($mock){
                 $this->assertEquals('H:test:1', $job->getJobHandle());
                 $job->onComplete([$mock, 'completed']);
             });
         $mock->expects($this->once())
             ->method('completed')
-            ->with($this->isInstanceOf(ClientForegroundJob::class))
-            ->willReturnCallback(function(ClientForegroundJob $job){
+            ->with($this->isInstanceOf(ForegroundJob::class))
+            ->willReturnCallback(function(ForegroundJob $job){
                 $this->assertEquals('tset', $job->getResult());
             });
 
@@ -61,8 +61,8 @@ class ClientTest extends TestCase {
         $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['created'])->getMock();
         $mock->expects($this->once())
             ->method('created')
-            ->with($this->isInstanceOf(ClientBackgroundJob::class))
-            ->willReturnCallback(function(ClientBackgroundJob $job){
+            ->with($this->isInstanceOf(BackgroundJob::class))
+            ->willReturnCallback(function(BackgroundJob $job){
                 $this->assertEquals('H:test:1', $job->getJobHandle());
             });
 

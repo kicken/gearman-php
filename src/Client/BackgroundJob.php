@@ -1,13 +1,12 @@
 <?php
 
-namespace Kicken\Gearman\Job;
+namespace Kicken\Gearman\Client;
 
 use Kicken\Gearman\Client;
-use Kicken\Gearman\Job\Data\ClientJobData;
 use React\Promise\PromiseInterface;
 use function React\Promise\reject;
 
-class ClientBackgroundJob extends ClientJob {
+class BackgroundJob extends ClientJob {
     private ?Client $client;
 
     public function __construct(ClientJobData $jobDetails, Client $client = null){

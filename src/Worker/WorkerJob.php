@@ -22,10 +22,10 @@
  *
  */
 
-namespace Kicken\Gearman\Job;
+namespace Kicken\Gearman\Worker;
 
 use Kicken\Gearman\Job\Data\JobData;
-use Kicken\Gearman\Job\Data\WorkJobData;
+use Kicken\Gearman\Job\Job;
 use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
