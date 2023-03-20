@@ -2,10 +2,12 @@
 
 namespace Kicken\Gearman\Network;
 
-use React\Promise\ExtendedPromiseInterface;
+use React\Promise\PromiseInterface;
 
 interface Endpoint {
-    public function connect() : ExtendedPromiseInterface;
+    public function connect(bool $autoDisconnect) : PromiseInterface;
+
+    public function disconnect() : void;
 
     public function getAddress() : string;
 

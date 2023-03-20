@@ -3,42 +3,78 @@
 namespace Kicken\Gearman\Network;
 
 use Kicken\Gearman\Exception\CouldNotConnectException;
+use Psr\Log\LoggerAwareTrait;
+use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
-use React\Promise\Deferred;
-use React\Promise\ExtendedPromiseInterface;
+use React\Promise\Promise;
+use React\Promise\PromiseInterface;
 use function React\Promise\reject;
+use function React\Promise\resolve;
 
 class GearmanEndpoint implements Endpoint {
+    use LoggerAwareTrait;
+
     private string $url;
     private int $connectTimeout;
     private LoopInterface $loop;
     /** @var resource */
     private $stream = null;
+    private ?Connection $connection = null;
+    private ?PromiseInterface $connectingPromise = null;
 
     public function __construct(string $url, int $connectTimeout = null, LoopInterface $loop = null){
         $this->url = $url;
         $this->connectTimeout = $connectTimeout ?? ini_get('default_socket_timeout');
         $this->loop = $loop ?? Loop::get();
+        $this->logger = new NullLogger();
     }
 
-    public function connect() : ExtendedPromiseInterface{
+    public function connect(bool $autoDisconnect) : PromiseInterface{
+        if ($this->connection && $this->connection->isConnected()){
+            $this->connection->setAutoDisconnect($autoDisconnect);
+
+            return resolve($this->connection);
+        }
+
+        if ($this->connectingPromise){
+            return $this->connectingPromise;
+        }
+
+        $this->connection = null;
         $this->stream = stream_socket_client($this->url, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
         if (!$this->stream){
             return reject(new CouldNotConnectException($this, $errno, $errStr));
         }
 
-        $deferred = new Deferred();
-        $timeoutTimer = $this->loop->addTimer($this->connectTimeout, function() use ($deferred){
-            $this->completeConnectionAttempt($deferred);
+        $promise = new Promise(function($resolve, $reject){
+            $timeoutTimer = $this->loop->addTimer($this->connectTimeout, function() use ($resolve, $reject){
+                $this->completeConnectionAttempt($resolve, $reject);
+            });
+
+            $this->loop->addWriteStream($this->stream, function() use ($resolve, $reject, $timeoutTimer){
+                $this->loop->cancelTimer($timeoutTimer);
+                $this->completeConnectionAttempt($resolve, $reject);
+            });
         });
 
-        $this->loop->addWriteStream($this->stream, function() use ($deferred, $timeoutTimer){
-            $this->loop->cancelTimer($timeoutTimer);
-            $this->completeConnectionAttempt($deferred);
+        $promise = $promise->then(function(Connection $connection) use ($autoDisconnect){
+            $this->logger->info('Successfully connected to server', ['endpoint' => $connection->getRemoteAddress()]);
+            $connection->setAutoDisconnect($autoDisconnect);
+
+            return $this->connection = $connection;
+        }, function($error){
+            $this->logger->warning($error->getMessage(), ['url' => $this->url]);
+            throw $error;
         });
 
-        return $deferred->promise();
+        return $this->connectingPromise = $promise;
+    }
+
+    public function disconnect() : void{
+        if ($this->connection){
+            $this->connection->disconnect();
+        }
     }
 
     public function getAddress() : string{
@@ -63,13 +99,13 @@ class GearmanEndpoint implements Endpoint {
         }
     }
 
-    private function completeConnectionAttempt(Deferred $deferred){
+    private function completeConnectionAttempt(callable $resolve, callable $reject){
         $this->loop->removeWriteStream($this->stream);
         if ($this->isStreamConnected()){
-            $deferred->resolve(new GearmanConnection($this->stream, $this->loop));
+            $resolve(new GearmanConnection($this->stream, $this->loop));
         } else {
             $this->stream = null;
-            $deferred->reject(new CouldNotConnectException($this));
+            $reject(new CouldNotConnectException($this));
         }
     }
 
