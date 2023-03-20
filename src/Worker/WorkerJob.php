@@ -26,7 +26,7 @@ namespace Kicken\Gearman\Worker;
 
 use Kicken\Gearman\Job\Data\JobData;
 use Kicken\Gearman\Job\Job;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -37,11 +37,11 @@ use Kicken\Gearman\Protocol\PacketType;
  * @package Kicken\Gearman\Job
  */
 class WorkerJob extends Job {
-    private Connection $server;
+    private Endpoint $server;
     /** @var JobData|WorkJobData */
     protected JobData $data;
 
-    public function __construct(Connection $server, WorkJobData $details){
+    public function __construct(Endpoint $server, WorkJobData $details){
         $this->server = $server;
         $this->data = $details;
     }

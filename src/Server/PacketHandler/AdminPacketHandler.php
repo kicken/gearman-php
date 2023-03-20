@@ -2,7 +2,7 @@
 
 namespace Kicken\Gearman\Server\PacketHandler;
 
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\AdministrativePacketHandler;
 use Kicken\Gearman\Protocol\AdministrativeCommandPacket;
 use Kicken\Gearman\Protocol\AdministrativePacket;
@@ -21,7 +21,7 @@ class AdminPacketHandler extends AdministrativePacketHandler {
         $this->server = $server;
     }
 
-    public function handleAdministrativePacket(Connection $connection, AdministrativePacket $packet) : bool{
+    public function handleAdministrativePacket(Endpoint $connection, AdministrativePacket $packet) : bool{
         if (!$packet instanceof AdministrativeCommandPacket){
             return false;
         }

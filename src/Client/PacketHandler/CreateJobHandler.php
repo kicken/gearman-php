@@ -4,7 +4,7 @@ namespace Kicken\Gearman\Client\PacketHandler;
 
 use Kicken\Gearman\Client\ClientJobData;
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -24,7 +24,7 @@ class CreateJobHandler extends BinaryPacketHandler {
         $this->logger = $logger;
     }
 
-    public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{
         if ($packet->getType() === PacketType::JOB_CREATED && !$this->data->jobHandle){
             $this->data->jobHandle = $packet->getArgument(0);
             $this->jobHandleDeferred->resolve();
@@ -33,7 +33,7 @@ class CreateJobHandler extends BinaryPacketHandler {
             }
 
             $this->logger->debug('Job created.', [
-                'server' => $connection->getRemoteAddress()
+                'server' => $connection->getAddress()
                 , 'function' => $this->data->function
                 , 'handle' => $this->data->jobHandle
             ]);
@@ -41,7 +41,7 @@ class CreateJobHandler extends BinaryPacketHandler {
             return true;
         } else if ($packet->getArgument(0) === $this->data->jobHandle){
             $this->logger->debug('Received job details update.', [
-                'server' => $connection->getRemoteAddress()
+                'server' => $connection->getAddress()
                 , 'function' => $this->data->function
                 , 'handle' => $this->data->jobHandle
             ]);
@@ -53,7 +53,7 @@ class CreateJobHandler extends BinaryPacketHandler {
         return false;
     }
 
-    public function createJob(Connection $server) : ExtendedPromiseInterface{
+    public function createJob(Endpoint $server) : ExtendedPromiseInterface{
         $packetType = $this->getSubmitJobType($this->data->priority, $this->data->background);
         $arguments = [$this->data->function, $this->data->unique, $this->data->workload];
 
@@ -61,12 +61,12 @@ class CreateJobHandler extends BinaryPacketHandler {
         $server->writePacket($packet);
         $server->addPacketHandler($this);
 
-        $this->logger->debug('Sending create job to server', ['server' => $server->getRemoteAddress(), 'function' => $this->data->function]);
+        $this->logger->debug('Sending create job to server', ['server' => $server->getAddress(), 'function' => $this->data->function]);
 
         return $this->jobHandleDeferred->promise();
     }
 
-    private function updateJobData(Connection $server, BinaryPacket $packet){
+    private function updateJobData(Endpoint $server, BinaryPacket $packet){
         switch ($packet->getType()){
             case PacketType::WORK_STATUS:
                 $this->data->numerator = (int)$packet->getArgument(1);

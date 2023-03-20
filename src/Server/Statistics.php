@@ -67,7 +67,7 @@ class Statistics {
             if ($worker){
                 $list[] = sprintf('%d %s %s: %s'
                     , $worker->getConnection()->getFd()
-                    , $worker->getConnection()->getRemoteAddress()
+                    , $worker->getConnection()->getAddress()
                     , $worker->getClientId()
                     , implode(' ', $worker->getAvailableFunctions())
                 );

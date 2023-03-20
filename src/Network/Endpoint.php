@@ -9,9 +9,13 @@ interface Endpoint {
 
     public function disconnect() : void;
 
+    public function getFd() : int;
+
     public function getAddress() : string;
 
     public function listen(callable $handler);
 
     public function shutdown();
+
+    public function on(string $event, callable $callback) : void;
 }

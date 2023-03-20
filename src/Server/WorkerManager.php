@@ -4,7 +4,7 @@ namespace Kicken\Gearman\Server;
 
 use Kicken\Gearman\Events\EventEmitter;
 use Kicken\Gearman\Events\ServerEvents;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 
 class WorkerManager {
     use EventEmitter;
@@ -17,7 +17,7 @@ class WorkerManager {
     }
 
     public function wakeAllCandidates(ServerJobData $jobData) : ?Worker{
-        /** @var Connection $connection */
+        /** @var Endpoint $connection */
         foreach ($this->registry as $connection){
             $worker = $this->getWorker($connection);
             if ($worker->canDo($jobData)){
@@ -28,7 +28,7 @@ class WorkerManager {
         return null;
     }
 
-    public function getWorker(Connection $connection) : Worker{
+    public function getWorker(Endpoint $connection) : Worker{
         if (!$this->registry->contains($connection)){
             $this->registry->attach($connection, $worker = new Worker($connection));
             $this->emit(ServerEvents::WORKER_CONNECTED, $worker);
@@ -37,7 +37,7 @@ class WorkerManager {
         return $this->registry[$connection];
     }
 
-    public function removeConnection(Connection $connection){
+    public function removeConnection(Endpoint $connection){
         $worker = $this->getWorker($connection);
         $this->registry->detach($connection);
         $this->emit(ServerEvents::WORKER_DISCONNECTED, $worker);
@@ -55,7 +55,7 @@ class WorkerManager {
 
     private function disconnectByFilter(callable $filter = null){
         $connectionList = iterator_to_array($this->registry);
-        /** @var Connection $connection */
+        /** @var Endpoint $connection */
         foreach ($connectionList as $connection){
             if (!$filter || call_user_func($filter, $this->getWorker($connection))){
                 $connection->disconnect();

@@ -3,7 +3,7 @@
 namespace Kicken\Gearman\Client\PacketHandler;
 
 use Kicken\Gearman\Job\Data\JobStatusData;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -23,10 +23,10 @@ class JobStatusHandler extends BinaryPacketHandler {
         $this->logger = $logger;
     }
 
-    public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{
         if ($packet->getType() === PacketType::STATUS_RES && $packet->getArgument(0) === $this->data->jobHandle){
             $this->logger->info('Job status updated', [
-                'server' => $connection->getRemoteAddress()
+                'server' => $connection->getAddress()
                 , 'handle' => $this->data->jobHandle
             ]);
             $this->data->isKnown = (bool)(int)$packet->getArgument(1);
@@ -42,13 +42,13 @@ class JobStatusHandler extends BinaryPacketHandler {
         return false;
     }
 
-    public function waitForResult(Connection $server) : ExtendedPromiseInterface{
+    public function waitForResult(Endpoint $server) : ExtendedPromiseInterface{
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::GET_STATUS, [$this->data->jobHandle]);
         $server->writePacket($packet);
         $server->addPacketHandler($this);
 
         $this->logger->info('Requesting job status', [
-            'server' => $server->getRemoteAddress()
+            'server' => $server->getAddress()
             , 'handle' => $this->data->jobHandle
         ]);
 

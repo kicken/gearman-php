@@ -3,7 +3,7 @@
 namespace Kicken\Gearman\Worker\PacketHandler;
 
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -23,9 +23,9 @@ class GrabJobHandler extends BinaryPacketHandler {
         $this->logger = $logger;
     }
 
-    public function grabJob(Connection $server) : ExtendedPromiseInterface{
+    public function grabJob(Endpoint $server) : ExtendedPromiseInterface{
         $this->logger->debug('Requesting job from server', [
-            'server' => $server->getRemoteAddress()
+            'server' => $server->getAddress()
         ]);
         $this->issueGrabJob($server);
         $server->addPacketHandler($this);
@@ -33,11 +33,11 @@ class GrabJobHandler extends BinaryPacketHandler {
         return $this->deferred->promise();
     }
 
-    public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{
         switch ($packet->getType()){
             case PacketType::NO_JOB:
                 $this->logger->debug('No job available, going to sleep', [
-                    'server' => $connection->getRemoteAddress()
+                    'server' => $connection->getAddress()
                 ]);
                 $this->sleep($connection);
 
@@ -46,7 +46,7 @@ class GrabJobHandler extends BinaryPacketHandler {
             case PacketType::JOB_ASSIGN_UNIQ:
                 $job = $this->createJob($connection, $packet);
                 $this->logger->debug('Job assigned', [
-                    'server' => $connection->getRemoteAddress()
+                    'server' => $connection->getAddress()
                     , 'handle' => $job->getJobHandle()
                 ]);
                 $this->deferred->resolve($job);
@@ -55,7 +55,7 @@ class GrabJobHandler extends BinaryPacketHandler {
                 return true;
             case PacketType::NOOP:
                 $this->logger->debug('Server issued wakeup.', [
-                    'server' => $connection->getRemoteAddress()
+                    'server' => $connection->getAddress()
                 ]);
                 $this->issueGrabJob($connection);
 
@@ -65,17 +65,17 @@ class GrabJobHandler extends BinaryPacketHandler {
         }
     }
 
-    private function sleep(Connection $server) : void{
+    private function sleep(Endpoint $server) : void{
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::PRE_SLEEP);
         $server->writePacket($packet);
     }
 
-    private function issueGrabJob(Connection $server){
+    private function issueGrabJob(Endpoint $server){
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ);
         $server->writePacket($packet);
     }
 
-    private function createJob(Connection $server, BinaryPacket $packet) : WorkerJob{
+    private function createJob(Endpoint $server, BinaryPacket $packet) : WorkerJob{
         if ($packet->getType() === PacketType::JOB_ASSIGN){
             $details = new WorkJobData($packet->getArgument(0), $packet->getArgument(1), null, JobPriority::NORMAL, $packet->getArgument(2));
         } else {

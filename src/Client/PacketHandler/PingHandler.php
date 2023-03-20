@@ -2,7 +2,7 @@
 
 namespace Kicken\Gearman\Client\PacketHandler;
 
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -20,7 +20,7 @@ class PingHandler extends BinaryPacketHandler {
         $this->logger = $logger;
     }
 
-    public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{
         if ($packet->getType() === PacketType::ECHO_RES){
             $connection->removePacketHandler($this);
 
@@ -28,7 +28,7 @@ class PingHandler extends BinaryPacketHandler {
             $endTime = round(microtime(true), 6);
             $delay = $endTime - $sentTime;
 
-            $this->logger->debug('Received ping from server', ['server' => $connection->getRemoteAddress(), 'delay' => $delay]);
+            $this->logger->debug('Received ping from server', ['server' => $connection->getAddress(), 'delay' => $delay]);
             $this->deferred->resolve($delay);
 
             return true;
@@ -37,8 +37,8 @@ class PingHandler extends BinaryPacketHandler {
         return false;
     }
 
-    public function ping(Connection $connection) : ExtendedPromiseInterface{
-        $this->logger->debug('Sending ping to server', ['server' => $connection->getRemoteAddress()]);
+    public function ping(Endpoint $connection) : ExtendedPromiseInterface{
+        $this->logger->debug('Sending ping to server', ['server' => $connection->getAddress()]);
         $time = sprintf('%0.6f', microtime(true));
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::ECHO_REQ, [$time]);
         $connection->writePacket($packet);

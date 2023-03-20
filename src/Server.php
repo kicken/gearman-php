@@ -2,7 +2,7 @@
 
 namespace Kicken\Gearman;
 
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Events\EndpointEvents;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\PacketHandler\AdminPacketHandler;
@@ -52,13 +52,13 @@ class Server {
     public function run(){
         foreach ($this->endpointList as $endpoint){
             $this->logger->info('Listening on ' . $endpoint->getAddress());
-            $endpoint->listen(function(Connection $stream){
-                $this->logger->info('Received connection from ' . $stream->getRemoteAddress());
+            $endpoint->listen(function(Endpoint $stream){
+                $this->logger->info('Received connection from ' . $stream->getAddress());
                 $stream->addPacketHandler(new AdminPacketHandler($this, $this->statistics, $this->logger));
                 $stream->addPacketHandler(new ClientPacketHandler($this->jobQueue, $this->logger));
                 $stream->addPacketHandler(new WorkerPacketHandler($this, $this->workerRegistry, $this->jobQueue, $this->logger));
-                $stream->addDisconnectHandler(function(Connection $connection){
-                    $this->logger->info('Lost connection to ' . $connection->getRemoteAddress());
+                $stream->on(EndpointEvents::DISCONNECTED, function(Endpoint $connection){
+                    $this->logger->info('Lost connection to ' . $connection->getAddress());
                     $worker = $this->workerRegistry->getWorker($connection);
                     $job = $worker->getCurrentJob();
                     if ($job){

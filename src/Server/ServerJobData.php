@@ -3,7 +3,7 @@
 namespace Kicken\Gearman\Server;
 
 use Kicken\Gearman\Job\Data\JobData;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\Packet;
 
 class ServerJobData extends JobData {
@@ -13,7 +13,7 @@ class ServerJobData extends JobData {
     public int $priority;
     public bool $background;
     public bool $running = false;
-    /** @var Connection[] */
+    /** @var Endpoint[] */
     private array $watchList = [];
 
     public function __construct(?string $jobHandle, string $function, string $uniqueId, string $workload, int $priority, bool $background){
@@ -25,7 +25,7 @@ class ServerJobData extends JobData {
         $this->background = $background;
     }
 
-    public function addWatcher(Connection $connection){
+    public function addWatcher(Endpoint $connection){
         $this->watchList[] = $connection;
     }
 

@@ -4,7 +4,7 @@ namespace Kicken\Gearman\Server;
 
 use Kicken\Gearman\Events\EventEmitter;
 use Kicken\Gearman\Events\ServerEvents;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -12,18 +12,18 @@ use Kicken\Gearman\Protocol\PacketType;
 class Worker {
     use EventEmitter;
 
-    private Connection $connection;
+    private Endpoint $connection;
     private array $functionList = [];
     private bool $sleeping = false;
     private string $clientId;
     private ?ServerJobData $currentAssignment = null;
 
-    public function __construct(Connection $connection){
+    public function __construct(Endpoint $connection){
         $this->connection = $connection;
         $this->clientId = uniqid();
     }
 
-    public function getConnection() : Connection{
+    public function getConnection() : Endpoint{
         return $this->connection;
     }
 

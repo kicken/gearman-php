@@ -36,7 +36,6 @@ use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Network\Connection;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -94,7 +93,7 @@ class Client {
     }
 
     public function pingServer() : PromiseInterface{
-        return $this->connect()->then(function(Connection $connection){
+        return $this->connect()->then(function(Endpoint $connection){
             return (new PingHandler($this->logger))->ping($connection);
         });
     }
@@ -113,7 +112,7 @@ class Client {
     public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
         $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
 
-        return $this->connect()->then(function(Connection $server) use ($jobDetails){
+        return $this->connect()->then(function(Endpoint $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
             return new ForegroundJob($jobDetails);
@@ -136,7 +135,7 @@ class Client {
         $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
         $jobDetails->background = true;
 
-        return $this->connect()->then(function(Connection $server) use ($jobDetails){
+        return $this->connect()->then(function(Endpoint $server) use ($jobDetails){
             return $this->createJob($server, $jobDetails);
         })->then(function() use ($jobDetails){
             return new BackgroundJob($jobDetails, $this);
@@ -154,7 +153,7 @@ class Client {
     public function getJobStatus(string $handle) : PromiseInterface{
         $data = new JobStatusData($handle);
 
-        return $this->connect()->then(function(Connection $server) use ($data){
+        return $this->connect()->then(function(Endpoint $server) use ($data){
             return (new JobStatusHandler($data, $this->logger))->waitForResult($server);
         })->then(function() use ($data){
             return new JobStatus($data);
@@ -203,7 +202,7 @@ class Client {
             throw new NoRegisteredFunctionException;
         }
 
-        $this->workAsync();
+        $this->workAsync()->done();
         $this->loop->run();
     }
 
@@ -232,12 +231,12 @@ class Client {
     }
 
     /**
-     * @param Connection $server
+     * @param Endpoint $server
      * @param ClientJobData $jobDetails
      *
      * @return PromiseInterface
      */
-    private function createJob(Connection $server, ClientJobData $jobDetails) : PromiseInterface{
+    private function createJob(Endpoint $server, ClientJobData $jobDetails) : PromiseInterface{
         return (new CreateJobHandler($jobDetails, $this->logger))->createJob($server);
     }
 
@@ -254,7 +253,7 @@ class Client {
         return $all ? all($promiseList) : race($promiseList);
     }
 
-    private function grabJob(Connection $server) : void{
+    private function grabJob(Endpoint $server) : void{
         if ($this->stopWorking){
             return;
         }

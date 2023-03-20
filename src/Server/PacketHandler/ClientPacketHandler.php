@@ -3,7 +3,7 @@
 namespace Kicken\Gearman\Server\PacketHandler;
 
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -21,7 +21,7 @@ class ClientPacketHandler extends BinaryPacketHandler {
         $this->logger = $logger;
     }
 
-    public function handleBinaryPacket(Connection $connection, BinaryPacket $packet) : bool{
+    public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{
         switch ($packet->getType()){
             case PacketType::SUBMIT_JOB:
             case PacketType::SUBMIT_JOB_BG:
@@ -48,7 +48,7 @@ class ClientPacketHandler extends BinaryPacketHandler {
         return true;
     }
 
-    private function createJob(Connection $connection, BinaryPacket $packet, int $priority, bool $background) : void{
+    private function createJob(Endpoint $connection, BinaryPacket $packet, int $priority, bool $background) : void{
         $newHandle = $this->newHandle();
         $function = $packet->getArgument(0);
         $uniqueId = $packet->getArgument(1);
@@ -69,7 +69,7 @@ class ClientPacketHandler extends BinaryPacketHandler {
         }
     }
 
-    private function jobStatus(Connection $connection, string $handle) : void{
+    private function jobStatus(Endpoint $connection, string $handle) : void{
         $this->logger->info('Processing job status command', ['handle' => $handle]);
         $job = $this->jobQueue->lookupJob($handle);
         if (!$job){
@@ -93,7 +93,7 @@ class ClientPacketHandler extends BinaryPacketHandler {
         $connection->writePacket($packet);
     }
 
-    private function handlePing(Connection $connection, array $argumentList) : void{
+    private function handlePing(Endpoint $connection, array $argumentList) : void{
         $this->logger->info('Processing ping command');
         $packet = new BinaryPacket(PacketMagic::RES, PacketType::ECHO_RES, $argumentList);
         $connection->writePacket($packet);
