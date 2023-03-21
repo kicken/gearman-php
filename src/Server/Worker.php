@@ -4,6 +4,7 @@ namespace Kicken\Gearman\Server;
 
 use Kicken\Gearman\Events\EventEmitter;
 use Kicken\Gearman\Events\ServerEvents;
+use Kicken\Gearman\Events\WorkerEvents;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
@@ -37,12 +38,12 @@ class Worker {
 
     public function registerFunction(string $function, ?int $timeout = null){
         $this->functionList[$function] = $timeout;
-        $this->emit(ServerEvents::WORKER_REGISTERED_FUNCTION, $function);
+        $this->emit(WorkerEvents::REGISTERED_FUNCTION, $function);
     }
 
     public function unregisterFunction(string $function){
         unset($this->functionList[$function]);
-        $this->emit(ServerEvents::WORKER_UNREGISTERED_FUNCTION, $function);
+        $this->emit(WorkerEvents::UNREGISTERED_FUNCTION, $function);
     }
 
     public function isSleeping() : bool{

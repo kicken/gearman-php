@@ -32,7 +32,6 @@ use Kicken\Gearman\Client\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Client\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Client\PacketHandler\PingHandler;
 use Kicken\Gearman\Exception\EmptyServerListException;
-use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
@@ -40,7 +39,9 @@ use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Kicken\Gearman\Worker\FunctionRegistry;
 use Kicken\Gearman\Worker\PacketHandler\GrabJobHandler;
+use Kicken\Gearman\Worker\WorkerFunction;
 use Kicken\Gearman\Worker\WorkerJob;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -64,7 +65,7 @@ class Client {
 
     /** @var Endpoint[] */
     private array $serverList;
-    private array $functionList = [];
+    private FunctionRegistry $functionList;
     private bool $autoDisconnect = true;
     private bool $stopWorking = false;
 
@@ -78,6 +79,7 @@ class Client {
     public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
         $this->loop = $loop ?? Loop::get();
         $this->serverList = mapToEndpointObjects($serverList, $this->loop);
+        $this->functionList = new FunctionRegistry();
         $this->logger = new NullLogger();
     }
 
@@ -175,23 +177,21 @@ class Client {
      *
      * @return PromiseInterface
      */
-    public function registerFunction(string $name, callable $callback, int $timeout = null) : PromiseInterface{
-        $this->functionList[$name] = [
-            'name' => $name,
-            'timeout' => $timeout,
-            'callback' => $callback
-        ];
+    public function registerFunction(string $name, callable $callback, int $timeout = null) : self{
+        $this->functionList->register(new WorkerFunction($name, $callback, $timeout));
         if ($timeout === null){
             $packet = new BinaryPacket(PacketMagic::REQ, PacketType::CAN_DO, [$name]);
         } else {
             $packet = new BinaryPacket(PacketMagic::REQ, PacketType::CAN_DO_TIMEOUT, [$name, $timeout]);
         }
 
-        return $this->connect(true)->then(function(array $connectedServers) use ($packet){
+        $this->connect(true)->done(function(array $connectedServers) use ($packet){
             foreach ($connectedServers as $server){
                 $server->writePacket($packet);
             }
         });
+
+        return $this;
     }
 
     /**
@@ -259,29 +259,9 @@ class Client {
         }
 
         (new GrabJobHandler($this->logger))->grabJob($server)->then(function(WorkerJob $job){
-            $this->processJob($job);
+            $this->functionList->run($job);
         })->done(function() use ($server){
             $this->grabJob($server);
         });
-    }
-
-    private function processJob(WorkerJob $job) : void{
-        if (!isset($this->functionList[$job->getFunction()])){
-            throw new NoRegisteredFunctionException;
-        }
-
-        $worker = $this->functionList[$job->getFunction()]['callback'];
-        try {
-            $result = call_user_func($worker, $job);
-            if ($result === false){
-                $job->sendFail();
-            } else {
-                $job->sendComplete((string)$result);
-            }
-        } catch (LostConnectionException $e){
-            throw $e;
-        } catch (\Exception $e){
-            $job->sendException(get_class($e) . ': ' . $e->getMessage());
-        }
     }
 }

@@ -3,6 +3,7 @@
 namespace Kicken\Gearman\Server;
 
 use Kicken\Gearman\Events\ServerEvents;
+use Kicken\Gearman\Events\WorkerEvents;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WeakReference;
@@ -18,12 +19,12 @@ class Statistics {
         $registry->on(ServerEvents::WORKER_CONNECTED, function(Worker $worker){
             $this->logger->debug('New worker connected, Updating worker statistics.');
             $this->workerList[] = WeakReference::create($worker);
-            $worker->on(ServerEvents::WORKER_REGISTERED_FUNCTION, function(string $function){
+            $worker->on(WorkerEvents::REGISTERED_FUNCTION, function(string $function){
                 $this->logger->debug('Incrementing available worker statistic for ' . $function . '.');
                 $stats = &$this->getFunctionQueueStats($function);
                 $stats['workers'] += 1;
             });
-            $worker->on(ServerEvents::WORKER_UNREGISTERED_FUNCTION, function(string $function){
+            $worker->on(WorkerEvents::UNREGISTERED_FUNCTION, function(string $function){
                 $this->logger->debug('Decrementing available worker statistic for ' . $function . '.');
                 $stats = &$this->getFunctionQueueStats($function);
                 $stats['workers'] -= 1;
