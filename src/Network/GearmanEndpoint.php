@@ -6,7 +6,6 @@ use Kicken\Gearman\Events\EndpointEvents;
 use Kicken\Gearman\Events\EventEmitter;
 use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\LostConnectionException;
-use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
@@ -58,7 +57,7 @@ class GearmanEndpoint implements Endpoint {
             return reject(new CouldNotConnectException($this, $errno, $errStr));
         }
 
-        $promise = new Promise(function($resolve, $reject){
+        $promise = new Promise(function($resolve){
             $timeoutTimer = $this->loop->addTimer($this->connectTimeout, function() use ($resolve){
                 $this->connectingPromise = null;
                 $this->completeConnectionAttempt();
@@ -126,16 +125,14 @@ class GearmanEndpoint implements Endpoint {
     }
 
     public function writePacket(Packet $packet) : void{
-        $this->writeBuffer .= $packet;
-        $this->flush();
+        if ($this->isConnected()){
+            $this->writeBuffer .= $packet;
+            $this->flush();
+        }
     }
 
     private function flush() : void{
-        if (!$this->stream){
-            throw new NotConnectedException();
-        }
-
-        set_error_handler(function($errNo, ...$args){
+        set_error_handler(function($errNo){
             if ($errNo == E_NOTICE){
                 throw new LostConnectionException();
             }
