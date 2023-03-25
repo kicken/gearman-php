@@ -250,7 +250,17 @@ class Client {
             $promiseList[] = $server->connect($this->autoDisconnect);
         }
 
-        return $all ? all($promiseList) : race($promiseList);
+        if ($all){
+            return all($promiseList);
+        } else {
+            return race($promiseList)->then(function(Endpoint $endpoint){
+                foreach ($this->serverList as $item){
+                    if ($item !== $endpoint){
+                        $item->disconnect();
+                    }
+                }
+            });
+        }
     }
 
     private function grabJob(Endpoint $server) : void{
