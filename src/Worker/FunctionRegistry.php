@@ -28,12 +28,13 @@ class FunctionRegistry {
     }
 
     public function run(WorkerJob $job){
-        if (!isset($this->functionList[$job->getFunction()])){
+        $normalizedFn = $this->normalize($job->getFunction());
+        if (!isset($this->functionList[$normalizedFn])){
             throw new NoRegisteredFunctionException;
         }
 
         try {
-            $fn = $this->functionList[$job->getFunction()];
+            $fn = $this->functionList[$normalizedFn];
             $result = call_user_func($fn->callback, $job);
             if ($result === false){
                 $job->sendFail();
