@@ -17,7 +17,9 @@ use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 
 class Server {
-    use LoggerAwareTrait;
+    use LoggerAwareTrait {
+        LoggerAwareTrait::setLogger as originalSetLogger;
+    }
 
     /** @var Endpoint[] */
     private array $endpointList;
@@ -45,7 +47,7 @@ class Server {
     }
 
     public function setLogger(LoggerInterface $logger){
-        $this->logger = $logger;
+        $this->originalSetLogger($logger);
         $this->statistics->setLogger($logger);
     }
 

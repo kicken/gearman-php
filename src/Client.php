@@ -60,7 +60,7 @@ use function React\Promise\reject;
  */
 class Client {
     use LoggerAwareTrait {
-        setLogger as originalSetLogger;
+        LoggerAwareTrait::setLogger as originalSetLogger;
     }
 
     /** @var Endpoint[] */
@@ -247,11 +247,19 @@ class Client {
 
         $promiseList = [];
         foreach ($this->serverList as $server){
-            $promiseList[] = $server->connect($this->autoDisconnect);
+            $promiseList[] = $server->connect($this->autoDisconnect)->then(null, function($error) use ($all){
+                if ($all){
+                    return null;
+                } else {
+                    throw $error;
+                }
+            });
         }
 
         if ($all){
-            return all($promiseList);
+            return all($promiseList)->then(function(array $connectedEndpoints){
+                return array_filter($connectedEndpoints);
+            });
         } else {
             return race($promiseList)->then(function(Endpoint $endpoint){
                 foreach ($this->serverList as $item){
