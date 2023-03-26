@@ -50,6 +50,7 @@ use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\PromiseInterface;
 use function React\Promise\all;
+use function React\Promise\any;
 use function React\Promise\race;
 use function React\Promise\reject;
 
@@ -261,7 +262,7 @@ class Client {
                 return array_filter($connectedEndpoints);
             });
         } else {
-            return race($promiseList)->then(function(Endpoint $endpoint){
+            return any($promiseList)->then(function(Endpoint $endpoint){
                 foreach ($this->serverList as $item){
                     if ($item !== $endpoint){
                         $item->disconnect();
