@@ -2,16 +2,21 @@
 
 namespace Kicken\Gearman\Test\Network;
 
+use Kicken\Gearman\Events\EventEmitter;
 use Kicken\Gearman\Exception\NotConnectedException;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use React\Promise\PromiseInterface;
+use function React\Promise\resolve;
 
-class PacketPlaybackConnection implements Connection {
+class PacketPlaybackConnection implements Endpoint {
+    use EventEmitter;
+
     /** @var PacketHandler[] */
     private array $handlerList = [];
     private array $sequence;
@@ -22,11 +27,11 @@ class PacketPlaybackConnection implements Connection {
         $this->writeBuffer = new PacketBuffer();
     }
 
-    public function isConnected() : bool{
+    private function isConnected() : bool{
         return count($this->sequence) > 0 || !$this->writeBuffer->isEmpty();
     }
 
-    public function getRemoteAddress() : string{
+    public function getAddress() : string{
         return 'localhost';
     }
 
@@ -59,11 +64,14 @@ class PacketPlaybackConnection implements Connection {
         }
     }
 
-    public function addDisconnectHandler(callable $handler) : void{
+    public function connect(bool $autoDisconnect) : PromiseInterface{
+        return resolve($this);
     }
 
-    public function hasHandler(PacketHandler $handler) : bool{
-        return in_array($handler, $this->handlerList);
+    public function listen(callable $handler) : void{
+    }
+
+    public function shutdown() : void{
     }
 
     public function playback(){
