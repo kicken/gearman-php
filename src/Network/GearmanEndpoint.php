@@ -74,12 +74,6 @@ class GearmanEndpoint implements Endpoint {
         return $this->connectingPromise = $this->connectingDeferred->promise();
     }
 
-    public function isConnected() : bool{
-        $remoteAddr = $this->stream ? stream_socket_get_name($this->stream, true) : null;
-
-        return $this->stream !== null && $remoteAddr;
-    }
-
     public function disconnect() : void{
         if ($this->stream){
             $this->loop->removeReadStream($this->stream);
@@ -109,7 +103,7 @@ class GearmanEndpoint implements Endpoint {
         return $this->url;
     }
 
-    public function listen(callable $handler){
+    public function listen(callable $handler) : void{
         $this->stream = stream_socket_server($this->url, $errNo, $errStr);
         if (!$this->stream){
             throw new CouldNotConnectException($this, $errNo, $errStr);
@@ -141,6 +135,20 @@ class GearmanEndpoint implements Endpoint {
         }
     }
 
+    public function shutdown() : void{
+        $this->loop->removeWriteStream($this->stream);
+        $this->loop->removeReadStream($this->stream);
+        stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
+        fclose($this->stream);
+        $this->stream = null;
+    }
+
+    private function isConnected() : bool{
+        $remoteAddr = $this->stream ? stream_socket_get_name($this->stream, true) : null;
+
+        return $this->stream !== null && $remoteAddr;
+    }
+
     private function flush() : void{
         set_error_handler(function($errNo){
             if ($errNo == E_NOTICE){
@@ -160,7 +168,7 @@ class GearmanEndpoint implements Endpoint {
         }
     }
 
-    private function accept(callable $handler){
+    private function accept(callable $handler) : void{
         $connection = stream_socket_accept($this->stream);
         if ($connection){
             stream_set_blocking($connection, false);
@@ -173,7 +181,7 @@ class GearmanEndpoint implements Endpoint {
         }
     }
 
-    private function setupStream(){
+    private function setupStream() : void{
         $this->logger->info('Successfully connected to server', ['endpoint' => $this->url]);
         stream_set_blocking($this->stream, false);
         $this->loop->addReadStream($this->stream, function(){
@@ -199,14 +207,6 @@ class GearmanEndpoint implements Endpoint {
         $this->connectingPromise = null;
         $this->connectingDeferred = null;
         $this->timeoutTimer = null;
-    }
-
-    public function shutdown(){
-        $this->loop->removeWriteStream($this->stream);
-        $this->loop->removeReadStream($this->stream);
-        stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
-        fclose($this->stream);
-        $this->stream = null;
     }
 
     private function buffer() : void{
@@ -240,7 +240,7 @@ class GearmanEndpoint implements Endpoint {
         }
     }
 
-    private function encodePacket(string $packet){
+    private function encodePacket(string $packet) : string{
         return preg_replace_callback('/[^A-Za-z0-9]/', function($v){
             return '\x' . bin2hex($v[0]);
         }, $packet);

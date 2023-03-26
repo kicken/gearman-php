@@ -3,6 +3,7 @@
 namespace Kicken\Gearman\Network;
 
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
+use Kicken\Gearman\Protocol\Packet;
 use React\Promise\PromiseInterface;
 
 interface Endpoint {
@@ -14,13 +15,15 @@ interface Endpoint {
 
     public function getAddress() : string;
 
-    public function listen(callable $handler);
+    public function listen(callable $handler) : void;
 
-    public function shutdown();
+    public function shutdown() : void;
 
     public function on(string $event, callable $callback) : void;
 
-    public function addPacketHandler(PacketHandler $handler);
+    public function writePacket(Packet $packet) : void;
 
-    public function removePacketHandler(PacketHandler $handler);
+    public function addPacketHandler(PacketHandler $handler) : void;
+
+    public function removePacketHandler(PacketHandler $handler) : void;
 }

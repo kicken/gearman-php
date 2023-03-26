@@ -62,7 +62,6 @@ class GrabJobHandler extends BinaryPacketHandler {
         }
     }
 
-
     private function createJob(Endpoint $server, BinaryPacket $packet) : WorkerJob{
         if ($packet->getType() === PacketType::JOB_ASSIGN){
             $details = new WorkJobData($packet->getArgument(0), $packet->getArgument(1), null, JobPriority::NORMAL, $packet->getArgument(2));
