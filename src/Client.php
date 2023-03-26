@@ -72,6 +72,8 @@ class Client {
     private bool $stopWorking = false;
 
     private LoopInterface $loop;
+    private GrabJobHandler $grabJobHandler;
+    private SleepHandler $sleepHandler;
 
     /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
@@ -218,25 +220,36 @@ class Client {
             return reject(new \GearmanException('Worker stopped'));
         }
 
-        $grabHandler = new GrabJobHandler($this->logger);
-        $sleepHandler = new SleepHandler($this->logger);
+        $this->grabJobHandler = new GrabJobHandler($this->logger);
+        $this->sleepHandler = new SleepHandler($this->logger);
 
-        return $this->connect(true)->then(function(array $serverList) use ($grabHandler, $sleepHandler){
-            $grabJob = function() use (&$serverList, &$grabJob, $grabHandler, $sleepHandler){
-                $server = current($serverList) ?: reset($serverList);
+        return $this->connect(true)->then(function(array $serverList){
+            $tryNext = function() use (&$serverList, &$tryNext){
+                if (!$serverList){
+                    return;
+                }
 
-                return $grabHandler->grabJob($server)->then(function(WorkerJob $job){
-                    $this->functionList->run($job);
-                }, function($error) use ($sleepHandler, $server){
+                $server = array_shift($serverList);
+                $grabLoop = function() use ($server, &$grabLoop){
+                    return $this->grabJobHandler->grabJob($server)->then(function(WorkerJob $job) use ($grabLoop){
+                        $this->functionList->run($job);
+
+                        return $grabLoop();
+                    });
+                };
+                $grabLoop()->then(null, function($error) use ($server, &$tryNext){
                     if (!$error instanceof NoWorkException){
                         throw $error;
                     }
 
-                    return $sleepHandler->sleep($server);
-                })->done($grabJob);
+                    $this->sleepHandler->sleep($server)->then(function() use ($server){
+                        $this->grabSleepLoop($server);
+                    });
+                    $tryNext();
+                });
             };
 
-            $grabJob();
+            $tryNext();
         });
     }
 
@@ -288,5 +301,19 @@ class Client {
                 return $endpoint;
             });
         }
+    }
+
+    private function grabSleepLoop(Endpoint $server){
+        $this->grabJobHandler->grabJob($server)->then(function(WorkerJob $job){
+            $this->functionList->run($job);
+        }, function($error) use ($server){
+            if (!$error instanceof NoWorkException){
+                throw $error;
+            }
+
+            return $this->sleepHandler->sleep($server);
+        })->done(function() use ($server){
+            $this->grabSleepLoop($server);
+        });
     }
 }
