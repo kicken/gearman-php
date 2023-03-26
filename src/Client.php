@@ -33,6 +33,7 @@ use Kicken\Gearman\Client\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Client\PacketHandler\PingHandler;
 use Kicken\Gearman\Exception\EmptyServerListException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
+use Kicken\Gearman\Exception\NoWorkException;
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Network\Endpoint;
@@ -41,6 +42,7 @@ use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Worker\FunctionRegistry;
 use Kicken\Gearman\Worker\PacketHandler\GrabJobHandler;
+use Kicken\Gearman\Worker\SleepHandler;
 use Kicken\Gearman\Worker\WorkerFunction;
 use Kicken\Gearman\Worker\WorkerJob;
 use Psr\Log\LoggerAwareTrait;
@@ -51,7 +53,6 @@ use React\EventLoop\LoopInterface;
 use React\Promise\PromiseInterface;
 use function React\Promise\all;
 use function React\Promise\any;
-use function React\Promise\race;
 use function React\Promise\reject;
 
 /**
@@ -217,10 +218,25 @@ class Client {
             return reject(new \GearmanException('Worker stopped'));
         }
 
-        return $this->connect(true)->then(function(array $serverList){
-            foreach ($serverList as $server){
-                $this->grabJob($server);
-            }
+        $grabHandler = new GrabJobHandler($this->logger);
+        $sleepHandler = new SleepHandler($this->logger);
+
+        return $this->connect(true)->then(function(array $serverList) use ($grabHandler, $sleepHandler){
+            $grabJob = function() use (&$serverList, &$grabJob, $grabHandler, $sleepHandler){
+                $server = current($serverList) ?: reset($serverList);
+
+                return $grabHandler->grabJob($server)->then(function(WorkerJob $job){
+                    $this->functionList->run($job);
+                }, function($error) use ($sleepHandler, $server){
+                    if (!$error instanceof NoWorkException){
+                        throw $error;
+                    }
+
+                    return $sleepHandler->sleep($server);
+                })->done($grabJob);
+            };
+
+            $grabJob();
         });
     }
 
@@ -272,17 +288,5 @@ class Client {
                 return $endpoint;
             });
         }
-    }
-
-    private function grabJob(Endpoint $server) : void{
-        if ($this->stopWorking){
-            return;
-        }
-
-        (new GrabJobHandler($this->logger))->grabJob($server)->then(function(WorkerJob $job){
-            $this->functionList->run($job);
-        })->done(function() use ($server){
-            $this->grabJob($server);
-        });
     }
 }

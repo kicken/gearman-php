@@ -33,6 +33,7 @@ class GearmanEndpoint implements Endpoint {
     /** @var resource */
     private $stream = null;
     private ?Deferred $connectingDeferred = null;
+    private ?PromiseInterface $connectingPromise = null;
     private ?TimerInterface $timeoutTimer = null;
 
     private string $writeBuffer = '';
@@ -49,10 +50,10 @@ class GearmanEndpoint implements Endpoint {
 
     public function connect(bool $autoDisconnect) : PromiseInterface{
         $this->autoDisconnect = $autoDisconnect;
-        if ($this->isConnected()){
+        if ($this->connectingPromise){
+            return $this->connectingPromise = $this->connectingPromise->then();
+        } else if ($this->isConnected()){
             return resolve($this);
-        } else if ($this->connectingDeferred){
-            return $this->connectingDeferred->promise();
         }
 
         $this->connectedEventTriggered = false;
@@ -70,7 +71,7 @@ class GearmanEndpoint implements Endpoint {
             $this->completeConnectionAttempt();
         });
 
-        return $this->connectingDeferred->promise();
+        return $this->connectingPromise = $this->connectingDeferred->promise();
     }
 
     public function isConnected() : bool{
@@ -88,6 +89,7 @@ class GearmanEndpoint implements Endpoint {
             if ($this->connectingDeferred){
                 $this->connectingDeferred->reject(new CouldNotConnectException($this));
                 $this->connectingDeferred = null;
+                $this->connectingPromise = null;
             }
             if ($this->timeoutTimer){
                 $this->loop->cancelTimer($this->timeoutTimer);
@@ -194,6 +196,7 @@ class GearmanEndpoint implements Endpoint {
             $this->logger->warning($error->getMessage(), ['url' => $this->url]);
             $this->connectingDeferred->reject($error);
         }
+        $this->connectingPromise = null;
         $this->connectingDeferred = null;
         $this->timeoutTimer = null;
     }
