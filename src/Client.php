@@ -259,6 +259,8 @@ class Client {
                         $item->disconnect();
                     }
                 }
+
+                return $endpoint;
             });
         }
     }

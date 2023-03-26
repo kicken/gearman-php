@@ -13,7 +13,8 @@ use Psr\Log\LoggerAwareTrait;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
-use React\Promise\Promise;
+use React\EventLoop\TimerInterface;
+use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
 use function React\Promise\reject;
 use function React\Promise\resolve;
@@ -27,10 +28,12 @@ class GearmanEndpoint implements Endpoint {
     private string $url;
     private int $connectTimeout;
     private bool $autoDisconnect = true;
+    private bool $connectedEventTriggered = false;
 
     /** @var resource */
     private $stream = null;
-    private ?PromiseInterface $connectingPromise = null;
+    private ?Deferred $connectingDeferred = null;
+    private ?TimerInterface $timeoutTimer = null;
 
     private string $writeBuffer = '';
     private PacketBuffer $readBuffer;
@@ -48,37 +51,32 @@ class GearmanEndpoint implements Endpoint {
         $this->autoDisconnect = $autoDisconnect;
         if ($this->isConnected()){
             return resolve($this);
-        } else if ($this->connectingPromise){
-            return $this->connectingPromise;
+        } else if ($this->connectingDeferred){
+            return $this->connectingDeferred->promise();
         }
 
+        $this->connectedEventTriggered = false;
         $this->stream = stream_socket_client($this->url, $errno, $errStr, null, STREAM_CLIENT_ASYNC_CONNECT);
         if (!$this->stream){
             return reject(new CouldNotConnectException($this, $errno, $errStr));
         }
 
-        $promise = new Promise(function($resolve){
-            $timeoutTimer = $this->loop->addTimer($this->connectTimeout, function() use ($resolve){
-                $this->connectingPromise = null;
-                $this->completeConnectionAttempt();
-                $resolve($this);
-            });
-
-            $this->loop->addWriteStream($this->stream, function() use ($resolve, $timeoutTimer){
-                $this->connectingPromise = null;
-                $this->loop->cancelTimer($timeoutTimer);
-                $this->completeConnectionAttempt();
-                $resolve($this);
-            });
+        $this->connectingDeferred = new Deferred();
+        $this->timeoutTimer = $this->loop->addTimer($this->connectTimeout, function(){
+            $this->completeConnectionAttempt();
         });
 
-        return $this->connectingPromise = $promise;
+        $this->loop->addWriteStream($this->stream, function(){
+            $this->completeConnectionAttempt();
+        });
+
+        return $this->connectingDeferred->promise();
     }
 
     public function isConnected() : bool{
         $remoteAddr = $this->stream ? stream_socket_get_name($this->stream, true) : null;
 
-        return $this->stream !== null && !$this->connectingPromise && $remoteAddr;
+        return $this->stream !== null && $remoteAddr;
     }
 
     public function disconnect() : void{
@@ -87,7 +85,17 @@ class GearmanEndpoint implements Endpoint {
             $this->loop->removeWriteStream($this->stream);
             fclose($this->stream);
             $this->stream = null;
-            $this->emit(EndpointEvents::DISCONNECTED, $this);
+            if ($this->connectingDeferred){
+                $this->connectingDeferred->reject(new CouldNotConnectException($this));
+                $this->connectingDeferred = null;
+            }
+            if ($this->timeoutTimer){
+                $this->loop->cancelTimer($this->timeoutTimer);
+                $this->timeoutTimer = null;
+            }
+            if ($this->connectedEventTriggered){
+                $this->emit(EndpointEvents::DISCONNECTED, $this);
+            }
         }
     }
 
@@ -158,27 +166,36 @@ class GearmanEndpoint implements Endpoint {
             $endpoint = new self($remote, $this->connectTimeout, $this->loop);
             $endpoint->setLogger($this->logger);
             $endpoint->stream = $connection;
-            $endpoint->completeConnectionAttempt();
+            $endpoint->setupStream();
             call_user_func($handler, $endpoint);
         }
     }
 
+    private function setupStream(){
+        $this->logger->info('Successfully connected to server', ['endpoint' => $this->url]);
+        stream_set_blocking($this->stream, false);
+        $this->loop->addReadStream($this->stream, function(){
+            $this->buffer();
+            $this->emitPackets();
+        });
+        $this->emit(EndpointEvents::CONNECTED, $this);
+        $this->connectedEventTriggered = true;
+    }
+
     private function completeConnectionAttempt() : void{
+        $this->loop->cancelTimer($this->timeoutTimer);
         $this->loop->removeWriteStream($this->stream);
         if ($this->isConnected()){
-            $this->logger->info('Successfully connected to server', ['endpoint' => $this->url]);
-            stream_set_blocking($this->stream, false);
-            $this->loop->addReadStream($this->stream, function(){
-                $this->buffer();
-                $this->emitPackets();
-            });
-            $this->emit(EndpointEvents::CONNECTED, $this);
+            $this->setupStream();
+            $this->connectingDeferred->resolve($this);
         } else {
             $this->stream = null;
             $error = new CouldNotConnectException($this);
             $this->logger->warning($error->getMessage(), ['url' => $this->url]);
-            throw $error;
+            $this->connectingDeferred->reject($error);
         }
+        $this->connectingDeferred = null;
+        $this->timeoutTimer = null;
     }
 
     public function shutdown(){
