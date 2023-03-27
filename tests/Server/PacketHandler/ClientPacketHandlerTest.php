@@ -2,7 +2,7 @@
 
 namespace Kicken\Gearman\Test\Server\PacketHandler;
 
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -13,12 +13,12 @@ use PHPUnit\Framework\TestCase;
 
 class ClientPacketHandlerTest extends TestCase {
     private ClientPacketHandler $handler;
-    private Connection $connection;
+    private Endpoint $connection;
     private JobQueue $queue;
 
     protected function setUp() : void{
         $this->queue = $this->getMockBuilder(JobQueue::class)->disableOriginalConstructor()->getMock();
-        $this->connection = $this->getMockBuilder(Connection::class)->getMock();
+        $this->connection = $this->getMockBuilder(Endpoint::class)->getMock();
         $this->handler = new ClientPacketHandler($this->queue);
     }
 

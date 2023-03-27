@@ -6,7 +6,7 @@ use Kicken\Gearman\Client;
 use Kicken\Gearman\Client\BackgroundJob;
 use Kicken\Gearman\Client\ForegroundJob;
 use Kicken\Gearman\Client\JobStatus;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\GearmanEndpoint;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
@@ -19,7 +19,7 @@ use function React\Promise\resolve;
 
 class ClientTest extends TestCase {
     public function testDoesConnect(){
-        $connection = $this->getMockBuilder(Connection::class)->getMock();
+        $connection = $this->getMockBuilder(Endpoint::class)->getMock();
         $client = $this->createClient($connection);
         $client->submitJob('reverse', 'test');
     }
@@ -93,7 +93,7 @@ class ClientTest extends TestCase {
         $loop->run();
     }
 
-    private function createClient(Connection $connection) : Client{
+    private function createClient(Endpoint $connection) : Client{
         $endpoint = $this->getMockBuilder(GearmanEndpoint::class)->disableOriginalConstructor()->getMock();
         $endpoint->expects($this->atLeastOnce())->method('connect')->willReturn(resolve($connection));
 

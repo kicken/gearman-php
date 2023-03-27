@@ -11,14 +11,15 @@ use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\ServerJobData;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class ClientPacketHandler extends BinaryPacketHandler {
     private JobQueue $jobQueue;
     private LoggerInterface $logger;
 
-    public function __construct(JobQueue $jobQueue, LoggerInterface $logger){
+    public function __construct(JobQueue $jobQueue, ?LoggerInterface $logger = null){
         $this->jobQueue = $jobQueue;
-        $this->logger = $logger;
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{

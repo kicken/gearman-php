@@ -8,6 +8,7 @@ use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 
@@ -15,9 +16,9 @@ class PingHandler extends BinaryPacketHandler {
     private Deferred $deferred;
     private LoggerInterface $logger;
 
-    public function __construct(LoggerInterface $logger){
+    public function __construct(?LoggerInterface $logger = null){
         $this->deferred = new Deferred();
-        $this->logger = $logger;
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{

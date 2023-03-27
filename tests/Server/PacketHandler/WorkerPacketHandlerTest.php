@@ -3,10 +3,11 @@
 namespace Kicken\Gearman\Test\Server\PacketHandler;
 
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Kicken\Gearman\Server;
 use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\PacketHandler\WorkerPacketHandler;
 use Kicken\Gearman\Server\ServerJobData;
@@ -16,19 +17,21 @@ use PHPUnit\Framework\TestCase;
 
 class WorkerPacketHandlerTest extends TestCase {
     private WorkerPacketHandler $handler;
-    private Connection $connection;
+    private Endpoint $connection;
     private Worker $worker;
     private JobQueue $queue;
     private WorkerManager $manager;
     private ServerJobData $job;
 
     protected function setUp() : void{
-        $this->connection = $this->getMockBuilder(Connection::class)->getMock();
+        $server = $this->getMockBuilder(Server::class)->getMock();
+
+        $this->connection = $this->getMockBuilder(Endpoint::class)->getMock();
         $this->manager = $this->getMockBuilder(WorkerManager::class)->disableOriginalConstructor()->getMock();
         $this->worker = $this->getMockBuilder(Worker::class)->setConstructorArgs([$this->connection])->getMock();
         $this->queue = $this->getMockBuilder(JobQueue::class)->setConstructorArgs([$this->manager])->getMock();
         $this->job = $this->getMockBuilder(ServerJobData::class)->setConstructorArgs(['H:1', 'test', '', '', JobPriority::NORMAL, false])->getMock();
-        $this->handler = new WorkerPacketHandler($this->manager, $this->queue);
+        $this->handler = new WorkerPacketHandler($server, $this->manager, $this->queue);
         $this->queue->enqueue($this->job);
     }
 

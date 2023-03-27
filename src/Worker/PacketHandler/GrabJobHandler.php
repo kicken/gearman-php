@@ -12,6 +12,7 @@ use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Worker\WorkerJob;
 use Kicken\Gearman\Worker\WorkJobData;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 
@@ -19,8 +20,8 @@ class GrabJobHandler extends BinaryPacketHandler {
     private Deferred $deferred;
     private LoggerInterface $logger;
 
-    public function __construct(LoggerInterface $logger){
-        $this->logger = $logger;
+    public function __construct(?LoggerInterface $logger = null){
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function grabJob(Endpoint $server) : ExtendedPromiseInterface{

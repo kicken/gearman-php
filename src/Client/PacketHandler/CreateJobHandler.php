@@ -10,6 +10,7 @@ use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use React\Promise\Deferred;
 use React\Promise\ExtendedPromiseInterface;
 
@@ -18,10 +19,10 @@ class CreateJobHandler extends BinaryPacketHandler {
     private Deferred $jobHandleDeferred;
     private LoggerInterface $logger;
 
-    public function __construct(ClientJobData $data, LoggerInterface $logger){
+    public function __construct(ClientJobData $data, ?LoggerInterface $logger = null){
         $this->data = $data;
         $this->jobHandleDeferred = new Deferred();
-        $this->logger = $logger;
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{

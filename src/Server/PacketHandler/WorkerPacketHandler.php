@@ -11,6 +11,7 @@ use Kicken\Gearman\Server;
 use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\WorkerManager;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class WorkerPacketHandler extends BinaryPacketHandler {
     private Server $server;
@@ -18,11 +19,11 @@ class WorkerPacketHandler extends BinaryPacketHandler {
     private JobQueue $jobQueue;
     private LoggerInterface $logger;
 
-    public function __construct(Server $server, WorkerManager $manager, JobQueue $jobQueue, LoggerInterface $logger){
+    public function __construct(Server $server, WorkerManager $manager, JobQueue $jobQueue, ?LoggerInterface $logger = null){
         $this->server = $server;
         $this->workerManager = $manager;
         $this->jobQueue = $jobQueue;
-        $this->logger = $logger;
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{

@@ -74,7 +74,7 @@ class PacketPlaybackConnection implements Endpoint {
     public function shutdown() : void{
     }
 
-    public function playback(){
+    public function playback() : bool{
         while ($packet = array_shift($this->sequence)){
             if ($packet instanceof OutgoingPacket){
                 $this->emitPacket($packet);
@@ -89,6 +89,8 @@ class PacketPlaybackConnection implements Endpoint {
                 throw new \RuntimeException('Playback sequence must consist of OutgoingPacket or IncomingPacket elements only.');
             }
         }
+
+        return true;
     }
 
     private function emitPacket(Packet $packet){

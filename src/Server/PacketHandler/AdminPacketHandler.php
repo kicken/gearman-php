@@ -9,14 +9,15 @@ use Kicken\Gearman\Protocol\AdministrativePacket;
 use Kicken\Gearman\Server;
 use Kicken\Gearman\Server\Statistics;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class AdminPacketHandler extends AdministrativePacketHandler {
     private Server $server;
     private LoggerInterface $logger;
     private Statistics $statistics;
 
-    public function __construct(Server $server, Statistics $statistics, LoggerInterface $logger){
-        $this->logger = $logger;
+    public function __construct(Server $server, Statistics $statistics, ?LoggerInterface $logger = null){
+        $this->logger = $logger ?? new NullLogger();
         $this->statistics = $statistics;
         $this->server = $server;
     }

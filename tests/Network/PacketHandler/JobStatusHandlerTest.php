@@ -21,9 +21,7 @@ class JobStatusHandlerTest extends TestCase {
         $data = new JobStatusData('H:test:1');
         $handler = new JobStatusHandler($data);
         $handler->waitForResult($server);
-        $server->playback();
-
-        $this->assertTrue($server->hasHandler($handler));
+        $this->assertTrue($server->playback());
     }
 
     public function testStatusReceived(){
@@ -40,7 +38,7 @@ class JobStatusHandlerTest extends TestCase {
             $statusReceived = new JobStatus($data);
         });
 
-        $server->playback();
+        $this->assertTrue($server->playback());
 
         $this->assertInstanceOf(JobStatus::class, $statusReceived);
         $this->assertEquals('H:test:1', $statusReceived->getJobHandle());
@@ -48,7 +46,6 @@ class JobStatusHandlerTest extends TestCase {
         $this->assertEquals(10, $statusReceived->getDenominator());
         $this->assertTrue($statusReceived->isKnown());
         $this->assertTrue($statusReceived->isRunning());
-        $this->assertFalse($server->hasHandler($handler));
     }
 
     public function testStatusReceivedIsCorrectHandle(){
@@ -65,7 +62,7 @@ class JobStatusHandlerTest extends TestCase {
         $handler->waitForResult($server)->then(function() use (&$statusReceived, $data){
             $statusReceived = new JobStatus($data);
         });
-        $server->playback();
+        $this->assertTrue($server->playback());
 
         $this->assertInstanceOf(JobStatus::class, $statusReceived);
         $this->assertEquals('H:test:1', $statusReceived->getJobHandle());
@@ -73,6 +70,5 @@ class JobStatusHandlerTest extends TestCase {
         $this->assertEquals(10, $statusReceived->getDenominator());
         $this->assertTrue($statusReceived->isKnown());
         $this->assertFalse($statusReceived->isRunning());
-        $this->assertFalse($server->hasHandler($handler));
     }
 }

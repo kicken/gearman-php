@@ -3,7 +3,7 @@
 namespace Kicken\Gearman\Test\Server;
 
 use Kicken\Gearman\Job\JobPriority;
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Server\ServerJobData;
 use Kicken\Gearman\Server\Worker;
@@ -11,10 +11,10 @@ use PHPUnit\Framework\TestCase;
 
 class WorkerTest extends TestCase {
     private Worker $worker;
-    private Connection $connection;
+    private Endpoint $connection;
 
     protected function setUp() : void{
-        $this->connection = $this->getMockBuilder(Connection::class)->getMock();
+        $this->connection = $this->getMockBuilder(Endpoint::class)->getMock();
         $this->worker = new Worker($this->connection);
         $this->worker->registerFunction('test');
     }

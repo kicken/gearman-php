@@ -2,14 +2,14 @@
 
 namespace Kicken\Gearman\Test;
 
-use Kicken\Gearman\Network\Connection;
+use Kicken\Gearman\Client;
+use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\GearmanEndpoint;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\AutoPlaybackServer;
 use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
-use Kicken\Gearman\Worker;
 use Kicken\Gearman\Worker\WorkerJob;
 use PHPUnit\Framework\TestCase;
 use function React\Promise\resolve;
@@ -96,10 +96,10 @@ class WorkerTest extends TestCase {
         $worker->registerFunction('reverse', [$mockWorkerFunction, 'reverse'])->work();
     }
 
-    private function createWorker(Connection $connection) : Worker{
+    private function createWorker(Endpoint $connection) : Client{
         $endpoint = $this->getMockBuilder(GearmanEndpoint::class)->disableOriginalConstructor()->getMock();
         $endpoint->expects($this->atLeastOnce())->method('connect')->willReturn(resolve($connection));
 
-        return new Worker($endpoint);
+        return new Client($endpoint);
     }
 }
