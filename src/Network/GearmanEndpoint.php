@@ -7,8 +7,12 @@ use Kicken\Gearman\Events\EventEmitter;
 use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
+use Kicken\Gearman\Protocol\PacketMagic;
+use Kicken\Gearman\Protocol\PacketType;
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
@@ -19,7 +23,7 @@ use React\Promise\PromiseInterface;
 use function React\Promise\reject;
 use function React\Promise\resolve;
 
-class GearmanEndpoint implements Endpoint {
+class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
     use LoggerAwareTrait;
     use EventEmitter;
 
@@ -29,6 +33,8 @@ class GearmanEndpoint implements Endpoint {
     private int $connectTimeout;
     private bool $autoDisconnect = true;
     private bool $connectedEventTriggered = false;
+    private bool $remoteIsServer = true;
+    private string $clientId;
 
     /** @var resource */
     private $stream = null;
@@ -46,6 +52,7 @@ class GearmanEndpoint implements Endpoint {
         $this->loop = $loop ?? Loop::get();
         $this->logger = new NullLogger();
         $this->readBuffer = new PacketBuffer();
+        $this->clientId = 'gearman-php-' . bin2hex(random_bytes(8));
     }
 
     public function connect(bool $autoDisconnect) : PromiseInterface{
@@ -143,10 +150,20 @@ class GearmanEndpoint implements Endpoint {
         $this->stream = null;
     }
 
-    private function isConnected() : bool{
+    public function isConnected() : bool{
         $remoteAddr = $this->stream ? stream_socket_get_name($this->stream, true) : null;
 
         return $this->stream !== null && $remoteAddr;
+    }
+
+    public function setClientId(string $clientId){
+        $this->logger->info('Setting client ID', ['clientId' => $this->clientId]);
+        $this->clientId = $clientId;
+        $this->updateClientId();
+    }
+
+    public function getClientId() : string{
+        return $this->clientId;
     }
 
     private function flush() : void{
@@ -175,6 +192,7 @@ class GearmanEndpoint implements Endpoint {
             $remote = stream_socket_get_name($connection, true);
             $endpoint = new self($remote, $this->connectTimeout, $this->loop);
             $endpoint->setLogger($this->logger);
+            $endpoint->remoteIsServer = false;
             $endpoint->stream = $connection;
             $endpoint->setupStream();
             call_user_func($handler, $endpoint);
@@ -182,7 +200,7 @@ class GearmanEndpoint implements Endpoint {
     }
 
     private function setupStream() : void{
-        $this->logger->info('Successfully connected to server', ['endpoint' => $this->url]);
+        $this->logger->info('Connection established', ['endpoint' => $this->url]);
         stream_set_blocking($this->stream, false);
         $this->loop->addReadStream($this->stream, function(){
             $this->buffer();
@@ -197,6 +215,7 @@ class GearmanEndpoint implements Endpoint {
         $this->loop->removeWriteStream($this->stream);
         if ($this->isConnected()){
             $this->setupStream();
+            $this->updateClientId();
             $this->connectingDeferred->resolve($this);
         } else {
             $this->stream = null;
@@ -244,5 +263,13 @@ class GearmanEndpoint implements Endpoint {
         return preg_replace_callback('/[^A-Za-z0-9]/', function($v){
             return '\x' . bin2hex($v[0]);
         }, $packet);
+    }
+
+    private function updateClientId(){
+        if ($this->remoteIsServer && $this->isConnected()){
+            $this->logger->debug('Sending new client ID to server', ['clientId' => $this->clientId]);
+            $packet = new BinaryPacket(PacketMagic::REQ, PacketType::SET_CLIENT_ID, [$this->clientId]);
+            $this->writePacket($packet);
+        }
     }
 }

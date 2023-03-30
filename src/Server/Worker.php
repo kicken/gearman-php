@@ -16,20 +16,14 @@ class Worker {
     private Endpoint $connection;
     private array $functionList = [];
     private bool $sleeping = false;
-    private string $clientId;
     private ?ServerJobData $currentAssignment = null;
 
     public function __construct(Endpoint $connection){
         $this->connection = $connection;
-        $this->clientId = uniqid();
     }
 
     public function getConnection() : Endpoint{
         return $this->connection;
-    }
-
-    public function getClientId() : string{
-        return $this->clientId;
     }
 
     public function getAvailableFunctions() : array{

@@ -45,6 +45,7 @@ use Kicken\Gearman\Worker\PacketHandler\GrabJobHandler;
 use Kicken\Gearman\Worker\SleepHandler;
 use Kicken\Gearman\Worker\WorkerFunction;
 use Kicken\Gearman\Worker\WorkerJob;
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -87,10 +88,18 @@ class Client {
         $this->logger = new NullLogger();
     }
 
+    public function setClientId(string $clientId){
+        foreach ($this->serverList as $server){
+            $server->setClientId($clientId);
+        }
+    }
+
     public function setLogger(LoggerInterface $logger){
         $this->originalSetLogger($logger);
         foreach ($this->serverList as $server){
-            $server->setLogger($this->logger);
+            if ($server instanceof LoggerAwareInterface){
+                $server->setLogger($this->logger);
+            }
         }
     }
 

@@ -26,4 +26,8 @@ interface Endpoint {
     public function addPacketHandler(PacketHandler $handler) : void;
 
     public function removePacketHandler(PacketHandler $handler) : void;
+
+    public function setClientId(string $clientId);
+
+    public function getClientId() : string;
 }
