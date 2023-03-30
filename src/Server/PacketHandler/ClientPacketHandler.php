@@ -50,24 +50,23 @@ class ClientPacketHandler extends BinaryPacketHandler {
     }
 
     private function createJob(Endpoint $connection, BinaryPacket $packet, int $priority, bool $background) : void{
-        $newHandle = $this->newHandle();
         $function = $packet->getArgument(0);
         $uniqueId = $packet->getArgument(1);
         $workload = $packet->getArgument(2);
-        $this->logger->info('Processing create job command.', [
+
+        $job = new ServerJobData(null, $function, $uniqueId, $workload, $priority, $background);
+        $this->jobQueue->enqueue($job);
+        $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_CREATED, [$job->jobHandle]));
+        if (!$background){
+            $job->addWatcher($connection);
+        }
+        $this->logger->info('Processed create job command.', [
             'priority' => $priority
             , 'background' => $background
             , 'function' => $function
             , 'uniqueId' => $uniqueId
-            , 'handle' => $newHandle
+            , 'handle' => $job->jobHandle
         ]);
-
-        $job = new ServerJobData($newHandle, $function, $uniqueId, $workload, $priority, $background);
-        $this->jobQueue->enqueue($job);
-        $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_CREATED, [$newHandle]));
-        if (!$background){
-            $job->addWatcher($connection);
-        }
     }
 
     private function jobStatus(Endpoint $connection, string $handle) : void{
@@ -98,11 +97,5 @@ class ClientPacketHandler extends BinaryPacketHandler {
         $this->logger->info('Processing ping command');
         $packet = new BinaryPacket(PacketMagic::RES, PacketType::ECHO_RES, $argumentList);
         $connection->writePacket($packet);
-    }
-
-    private function newHandle() : string{
-        static $counter = 0;
-
-        return 'H:' . ++$counter;
     }
 }

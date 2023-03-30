@@ -48,6 +48,10 @@ class Server {
         return $this->isShutdown;
     }
 
+    public function setJobHandlePrefix(string $prefix){
+        $this->jobQueue->setHandlePrefix($prefix);
+    }
+
     public function setLogger(LoggerInterface $logger){
         $this->originalSetLogger($logger);
         $this->statistics->setLogger($logger);
