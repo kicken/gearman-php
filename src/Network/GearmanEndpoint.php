@@ -35,6 +35,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
     private bool $connectedEventTriggered = false;
     private bool $remoteIsServer = true;
     private string $clientId;
+    private array $options = [];
 
     /** @var resource */
     private $stream = null;
@@ -164,6 +165,12 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
 
     public function getClientId() : string{
         return $this->clientId;
+    }
+
+    public function setOption(string $option) : bool{
+        $this->options[] = $option;
+
+        return true;
     }
 
     private function flush() : void{

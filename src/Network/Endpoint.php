@@ -30,4 +30,6 @@ interface Endpoint {
     public function setClientId(string $clientId);
 
     public function getClientId() : string;
+
+    public function setOption(string $option) : bool;
 }

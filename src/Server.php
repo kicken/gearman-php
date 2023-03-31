@@ -8,6 +8,7 @@ use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\PacketHandler\AdminPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\ClientIdPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\ClientPacketHandler;
+use Kicken\Gearman\Server\PacketHandler\OptionsPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\WorkerPacketHandler;
 use Kicken\Gearman\Server\Statistics;
 use Kicken\Gearman\Server\WorkerManager;
@@ -69,6 +70,7 @@ class Server {
                 $this->logger->info('Received connection from ' . $stream->getAddress());
                 $stream->addPacketHandler(new AdminPacketHandler($this, $this->statistics, $this->logger));
                 $stream->addPacketHandler(new ClientIdPacketHandler());
+                $stream->addPacketHandler(new OptionsPacketHandler());
                 $stream->addPacketHandler(new ClientPacketHandler($this->jobQueue, $this->logger));
                 $stream->addPacketHandler(new WorkerPacketHandler($this, $this->workerRegistry, $this->jobQueue, $this->logger));
                 $stream->on(EndpointEvents::DISCONNECTED, function(Endpoint $connection){
