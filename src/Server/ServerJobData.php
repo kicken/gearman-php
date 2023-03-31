@@ -9,6 +9,7 @@ use Kicken\Gearman\Protocol\Packet;
 class ServerJobData extends JobData {
     public string $function;
     public string $uniqueId;
+    public string $reducer;
     public string $workload;
     public int $priority;
     public bool $background;
@@ -20,6 +21,7 @@ class ServerJobData extends JobData {
         parent::__construct($jobHandle);
         $this->function = $function;
         $this->uniqueId = $uniqueId;
+        $this->reducer = '';
         $this->workload = $workload;
         $this->priority = $priority;
         $this->background = $background;

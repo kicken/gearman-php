@@ -61,6 +61,8 @@ final class PacketType {
     const SUBMIT_JOB_LOW_BG = 34;
     const SUBMIT_JOB_SCHED = 35;
     const SUBMIT_JOB_EPOCH = 36;
+    const GRAB_JOB_ALL = 39;
+    const JOB_ASSIGN_ALL = 40;
 
     private function __construct(){
     }

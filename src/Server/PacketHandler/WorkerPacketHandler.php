@@ -51,6 +51,7 @@ class WorkerPacketHandler extends BinaryPacketHandler {
                 break;
             case PacketType::GRAB_JOB:
             case PacketType::GRAB_JOB_UNIQ:
+            case PacketType::GRAB_JOB_ALL:
                 $this->logger->debug('Worker is requesting a job.', ['worker' => $connection->getAddress()]);
                 $this->assignJob($connection, $packet->getType());
                 break;
@@ -110,20 +111,18 @@ class WorkerPacketHandler extends BinaryPacketHandler {
                 'worker' => $connection->getAddress()
                 , 'job' => $job->jobHandle
             ]);
-            if ($grabType === PacketType::GRAB_JOB){
-                $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_ASSIGN, [
-                    $job->jobHandle
-                    , $job->function
-                    , $job->workload
-                ]));
-            } else {
-                $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_ASSIGN_UNIQ, [
-                    $job->jobHandle
-                    , $job->function
-                    , $job->uniqueId
-                    , $job->workload
-                ]));
+            $assignType = PacketType::JOB_ASSIGN;
+            $arguments = [$job->jobHandle, $job->function];
+            if ($grabType === PacketType::GRAB_JOB_UNIQ){
+                $arguments[] = $job->uniqueId;
+                $assignType = PacketType::JOB_ASSIGN_UNIQ;
+            } else if ($grabType === PacketType::GRAB_JOB_ALL){
+                $arguments[] = $job->uniqueId;
+                $arguments[] = $job->reducer;
+                $assignType = PacketType::JOB_ASSIGN_ALL;
             }
+            $arguments[] = $job->workload;
+            $connection->writePacket(new BinaryPacket(PacketMagic::RES, $assignType, $arguments));
         }
     }
 }
