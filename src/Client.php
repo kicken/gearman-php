@@ -107,10 +107,17 @@ class Client {
         $this->autoDisconnect = $autoDisconnect;
     }
 
-    public function pingServer() : PromiseInterface{
+    public function pingServerAsync() : PromiseInterface{
         return $this->connect()->then(function(Endpoint $connection){
             return (new PingHandler($this->logger))->ping($connection);
         });
+    }
+
+    public function pingServer() : float{
+        $promise = $this->pingServerAsync();
+        $result = $this->waitForPromiseResult($promise);
+
+        return $result;
     }
 
     /**
@@ -124,7 +131,7 @@ class Client {
      *
      * @return PromiseInterface
      */
-    public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
+    public function submitJobAsync(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
         $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
 
         return $this->connect()->then(function(Endpoint $server) use ($jobDetails){
@@ -132,6 +139,13 @@ class Client {
         })->then(function() use ($jobDetails){
             return new ForegroundJob($jobDetails);
         });
+    }
+
+    public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ?string{
+        $promise = $this->submitJobAsync($function, $workload, $priority, $unique);
+        $job = $this->waitForPromiseResult($promise);
+
+        return $job instanceof ForegroundJob ? $job->getResult() : null;
     }
 
     /**
@@ -146,7 +160,7 @@ class Client {
      *
      * @return PromiseInterface The job handle assigned.
      */
-    public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
+    public function submitBackgroundJobAsync(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : PromiseInterface{
         $jobDetails = new ClientJobData($function, $workload, $unique, $priority);
         $jobDetails->background = true;
 
@@ -157,6 +171,13 @@ class Client {
         });
     }
 
+    public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ?string{
+        $promise = $this->submitBackgroundJobAsync($function, $workload, $priority, $unique);
+        $job = $this->waitForPromiseResult($promise);
+
+        return $job instanceof BackgroundJob ? $job->getJobHandle() : null;
+    }
+
     /**
      * Submit a job status request to determine the status of a background job.
      * You must wait for the status response by calling the wait method.
@@ -165,7 +186,7 @@ class Client {
      *
      * @return PromiseInterface
      */
-    public function getJobStatus(string $handle) : PromiseInterface{
+    public function getJobStatusAsync(string $handle) : PromiseInterface{
         $data = new JobStatusData($handle);
 
         return $this->connect()->then(function(Endpoint $server) use ($data){
@@ -173,6 +194,13 @@ class Client {
         })->then(function() use ($data){
             return new JobStatus($data);
         });
+    }
+
+    public function getJobStatus(string $handle) : ?JobStatus{
+        $promise = $this->getJobStatusAsync($handle);
+        $result = $this->waitForPromiseResult($promise);
+
+        return $result;
     }
 
     public function disconnect() : void{
@@ -324,5 +352,21 @@ class Client {
         })->done(function() use ($server){
             $this->grabSleepLoop($server);
         });
+    }
+
+    private function waitForPromiseResult(PromiseInterface $promise){
+        $complete = false;
+        $result = null;
+        $promise->done(function($value) use (&$complete, &$result){
+            $result = $value;
+            $complete = true;
+        });
+
+        $this->loop->run();
+        if (!$complete){
+            throw new \RuntimeException('Promise did not resolve.');
+        }
+
+        return $result;
     }
 }
