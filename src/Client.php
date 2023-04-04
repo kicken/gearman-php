@@ -69,7 +69,6 @@ class Client {
     /** @var Endpoint[] */
     private array $serverList;
     private FunctionRegistry $functionList;
-    private bool $autoDisconnect = true;
     private bool $stopWorking = false;
 
     private LoopInterface $loop;
@@ -101,10 +100,6 @@ class Client {
                 $server->setLogger($this->logger);
             }
         }
-    }
-
-    public function setAutoDisconnect(bool $autoDisconnect) : void{
-        $this->autoDisconnect = $autoDisconnect;
     }
 
     public function pingServerAsync() : PromiseInterface{
@@ -314,7 +309,7 @@ class Client {
 
         $promiseList = [];
         foreach ($this->serverList as $server){
-            $promiseList[] = $server->connect($this->autoDisconnect)->then(null, function($error) use ($all){
+            $promiseList[] = $server->connect()->then(null, function($error) use ($all){
                 if ($all){
                     return null;
                 } else {

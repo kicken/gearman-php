@@ -31,7 +31,6 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
 
     private string $url;
     private int $connectTimeout;
-    private bool $autoDisconnect = true;
     private bool $connectedEventTriggered = false;
     private bool $remoteIsServer = true;
     private string $clientId;
@@ -56,8 +55,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
         $this->clientId = 'gearman-php-' . bin2hex(random_bytes(8));
     }
 
-    public function connect(bool $autoDisconnect) : PromiseInterface{
-        $this->autoDisconnect = $autoDisconnect;
+    public function connect() : PromiseInterface{
         if ($this->connectingPromise){
             return $this->connectingPromise = $this->connectingPromise->then();
         } else if ($this->isConnected()){
@@ -124,14 +122,15 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
 
     public function addPacketHandler(PacketHandler $handler) : void{
         $this->packetHandlerList[] = $handler;
+        $this->addReadStream();
     }
 
     public function removePacketHandler(PacketHandler $handler) : void{
         $key = array_search($handler, $this->packetHandlerList, true);
         if ($key !== false){
             unset($this->packetHandlerList[$key]);
-            if (!$this->packetHandlerList && $this->autoDisconnect){
-                $this->disconnect();
+            if (!$this->packetHandlerList){
+                $this->loop->removeReadStream($this->stream);
             }
         }
     }
@@ -209,12 +208,16 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
     private function setupStream() : void{
         $this->logger->info('Connection established', ['endpoint' => $this->url]);
         stream_set_blocking($this->stream, false);
+        $this->addReadStream();
+        $this->emit(EndpointEvents::CONNECTED, $this);
+        $this->connectedEventTriggered = true;
+    }
+
+    private function addReadStream(){
         $this->loop->addReadStream($this->stream, function(){
             $this->buffer();
             $this->emitPackets();
         });
-        $this->emit(EndpointEvents::CONNECTED, $this);
-        $this->connectedEventTriggered = true;
     }
 
     private function completeConnectionAttempt() : void{

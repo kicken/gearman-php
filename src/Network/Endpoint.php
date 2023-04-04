@@ -7,7 +7,7 @@ use Kicken\Gearman\Protocol\Packet;
 use React\Promise\PromiseInterface;
 
 interface Endpoint {
-    public function connect(bool $autoDisconnect) : PromiseInterface;
+    public function connect() : PromiseInterface;
 
     public function disconnect() : void;
 
