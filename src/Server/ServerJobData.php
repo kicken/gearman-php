@@ -17,7 +17,7 @@ class ServerJobData extends JobData {
     /** @var Endpoint[] */
     private array $watchList = [];
 
-    public function __construct(?string $jobHandle, string $function, string $uniqueId, string $workload, int $priority, bool $background){
+    public function __construct(string $jobHandle, string $function, string $uniqueId, string $workload, int $priority, bool $background){
         parent::__construct($jobHandle);
         $this->function = $function;
         $this->uniqueId = $uniqueId;

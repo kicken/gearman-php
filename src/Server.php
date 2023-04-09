@@ -5,6 +5,7 @@ namespace Kicken\Gearman;
 use Kicken\Gearman\Events\EndpointEvents;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Server\JobQueue;
+use Kicken\Gearman\Server\MemoryJobQueue;
 use Kicken\Gearman\Server\PacketHandler\AdminPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\ClientIdPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\ClientPacketHandler;
@@ -31,8 +32,9 @@ class Server {
     private JobQueue $jobQueue;
     private Statistics $statistics;
     private bool $isShutdown = false;
+    private string $handlePrefix;
 
-    public function __construct($endpointList = '127.0.0.1:4730', LoopInterface $loop = null){
+    public function __construct($endpointList = '127.0.0.1:4730', string $handlePrefix = null, JobQueue $queue = null, LoopInterface $loop = null){
         if (!is_array($endpointList)){
             $endpointList = [$endpointList];
         }
@@ -41,16 +43,13 @@ class Server {
         $this->loop = $loop ?? Loop::get();
         $this->endpointList = mapToEndpointObjects($endpointList, $this->loop);
         $this->workerRegistry = new WorkerManager();
-        $this->jobQueue = new JobQueue($this->workerRegistry);
+        $this->jobQueue = $queue ?? new MemoryJobQueue();
         $this->statistics = new Statistics($this->workerRegistry, $this->jobQueue, $this->logger);
+        $this->handlePrefix = $handlePrefix ?? 'H:' . bin2hex(random_bytes(4));
     }
 
     public function isShutdown() : bool{
         return $this->isShutdown;
-    }
-
-    public function setJobHandlePrefix(string $prefix){
-        $this->jobQueue->setHandlePrefix($prefix);
     }
 
     public function setLogger(LoggerInterface $logger){
@@ -71,7 +70,7 @@ class Server {
                 $stream->addPacketHandler(new AdminPacketHandler($this, $this->statistics, $this->logger));
                 $stream->addPacketHandler(new ClientIdPacketHandler());
                 $stream->addPacketHandler(new OptionsPacketHandler());
-                $stream->addPacketHandler(new ClientPacketHandler($this->jobQueue, $this->logger));
+                $stream->addPacketHandler(new ClientPacketHandler($this->handlePrefix, $this->jobQueue, $this->workerRegistry, $this->logger));
                 $stream->addPacketHandler(new WorkerPacketHandler($this, $this->workerRegistry, $this->jobQueue, $this->logger));
                 $stream->on(EndpointEvents::DISCONNECTED, function(Endpoint $connection){
                     $this->logger->info('Lost connection to ' . $connection->getAddress());

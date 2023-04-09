@@ -9,6 +9,7 @@ use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use function Kicken\Gearman\normalizeFunctionName;
 
 class Worker {
     use EventEmitter;
@@ -31,12 +32,12 @@ class Worker {
     }
 
     public function registerFunction(string $function, ?int $timeout = null){
-        $this->functionList[$function] = $timeout;
+        $this->functionList[normalizeFunctionName($function)] = $timeout;
         $this->emit(WorkerEvents::REGISTERED_FUNCTION, $function);
     }
 
     public function unregisterFunction(string $function){
-        unset($this->functionList[$function]);
+        unset($this->functionList[normalizeFunctionName($function)]);
         $this->emit(WorkerEvents::UNREGISTERED_FUNCTION, $function);
     }
 
@@ -61,7 +62,7 @@ class Worker {
             return false;
         }
 
-        if (!array_key_exists($jobData->function, $this->functionList)){
+        if (!array_key_exists(normalizeFunctionName($jobData->function), $this->functionList)){
             return false;
         }
 

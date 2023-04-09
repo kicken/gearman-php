@@ -53,11 +53,11 @@ class Statistics {
                 $stats['workers'] -= 1;
             }
         });
-        $jobQueue->on(ServerEvents::JOB_QUEUED, function(ServerJobData $job){
+        /*$jobQueue->on(ServerEvents::JOB_QUEUED, function(ServerJobData $job){
             $this->logger->debug('Incrementing total jobs statistic for ' . $job->function);
             $stats = &$this->getFunctionQueueStats($job->function);
             $stats['total'] += 1;
-        });
+        });*/
     }
 
     public function listWorkerDetails() : string{

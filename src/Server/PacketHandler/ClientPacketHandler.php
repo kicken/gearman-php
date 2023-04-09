@@ -10,16 +10,22 @@ use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Server\JobQueue;
 use Kicken\Gearman\Server\ServerJobData;
+use Kicken\Gearman\Server\WorkerManager;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
 class ClientPacketHandler extends BinaryPacketHandler {
     private JobQueue $jobQueue;
+    private WorkerManager $workerManager;
     private LoggerInterface $logger;
+    private string $handlePrefix;
+    private static int $handleCounter = 0;
 
-    public function __construct(JobQueue $jobQueue, ?LoggerInterface $logger = null){
+    public function __construct(string $handlePrefix, JobQueue $jobQueue, WorkerManager $workerManager, ?LoggerInterface $logger = null){
         $this->jobQueue = $jobQueue;
+        $this->workerManager = $workerManager;
         $this->logger = $logger ?? new NullLogger();
+        $this->handlePrefix = $handlePrefix;
     }
 
     public function handleBinaryPacket(Endpoint $connection, BinaryPacket $packet) : bool{
@@ -50,11 +56,12 @@ class ClientPacketHandler extends BinaryPacketHandler {
     }
 
     private function createJob(Endpoint $connection, BinaryPacket $packet, int $priority, bool $background) : void{
+        $handle = $this->newHandle();
         $function = $packet->getArgument(0);
         $uniqueId = $packet->getArgument(1);
         $workload = $packet->getArgument(2);
 
-        $job = new ServerJobData(null, $function, $uniqueId, $workload, $priority, $background);
+        $job = new ServerJobData($handle, $function, $uniqueId, $workload, $priority, $background);
         $this->jobQueue->enqueue($job);
         $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_CREATED, [$job->jobHandle]));
         if (!$background){
@@ -67,11 +74,12 @@ class ClientPacketHandler extends BinaryPacketHandler {
             , 'uniqueId' => $uniqueId
             , 'handle' => $job->jobHandle
         ]);
+        $this->workerManager->wakeAllCandidates($job);
     }
 
     private function jobStatus(Endpoint $connection, string $handle) : void{
         $this->logger->info('Processing job status command', ['handle' => $handle]);
-        $job = $this->jobQueue->lookupJob($handle);
+        $job = $this->jobQueue->findByHandle($handle);
         if (!$job){
             $packet = new BinaryPacket(PacketMagic::RES, PacketType::STATUS_RES, [
                 $handle
@@ -97,5 +105,9 @@ class ClientPacketHandler extends BinaryPacketHandler {
         $this->logger->info('Processing ping command');
         $packet = new BinaryPacket(PacketMagic::RES, PacketType::ECHO_RES, $argumentList);
         $connection->writePacket($packet);
+    }
+
+    private function newHandle() : string{
+        return $this->handlePrefix . ':' . (++self::$handleCounter);
     }
 }

@@ -50,3 +50,7 @@ function mapToEndpointObjects($serverList, ?LoopInterface $loop) : array{
         throw new \InvalidArgumentException();
     }, $serverList);
 }
+
+function normalizeFunctionName(string $function) : string{
+    return strtolower(trim($function));
+}

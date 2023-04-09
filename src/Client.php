@@ -140,19 +140,25 @@ class Client {
     public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ?string{
         $promise = $this->submitJobAsync($function, $workload, $priority, $unique);
         $promise = $promise->then(function(ForegroundJob $job){
+            $this->logger->debug('Job created with handle', ['handle' => $job->getJobHandle()]);
             $deferred = new Deferred();
             $job->onComplete(function(ForegroundJob $job) use ($deferred){
+                $this->logger->debug('Job complete event', ['handle' => $job->getJobHandle()]);
                 $deferred->resolve($job);
             });
             $job->onFail(function(ForegroundJob $job) use ($deferred){
+                $this->logger->debug('Job fail event', ['handle' => $job->getJobHandle()]);
                 $deferred->reject($job);
             });
             $job->onException(function(ForegroundJob $job) use ($deferred){
+                $this->logger->debug('Job exception event', ['handle' => $job->getJobHandle()]);
                 $deferred->reject($job);
             });
 
             return $deferred->promise();
         })->then(function(ForegroundJob $job){
+            $this->logger->debug('Returning final job result.', ['handle' => $job->getJobHandle()]);
+
             return $job->getResult();
         });
 
