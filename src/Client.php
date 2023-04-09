@@ -51,6 +51,7 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
+use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
 use function React\Promise\all;
 use function React\Promise\any;
@@ -138,9 +139,24 @@ class Client {
 
     public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ?string{
         $promise = $this->submitJobAsync($function, $workload, $priority, $unique);
-        $job = $this->waitForPromiseResult($promise);
+        $promise = $promise->then(function(ForegroundJob $job){
+            $deferred = new Deferred();
+            $job->onComplete(function(ForegroundJob $job) use ($deferred){
+                $deferred->resolve($job);
+            });
+            $job->onFail(function(ForegroundJob $job) use ($deferred){
+                $deferred->reject($job);
+            });
+            $job->onException(function(ForegroundJob $job) use ($deferred){
+                $deferred->reject($job);
+            });
 
-        return $job instanceof ForegroundJob ? $job->getResult() : null;
+            return $deferred->promise();
+        })->then(function(ForegroundJob $job){
+            return $job->getResult();
+        });
+
+        return $this->waitForPromiseResult($promise);
     }
 
     /**
