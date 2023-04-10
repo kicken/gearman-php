@@ -14,6 +14,7 @@ class MemoryJobQueue implements JobQueue, LoggerAwareInterface {
     /** @var \SplPriorityQueue[] */
     private array $functionQueues = [];
     private array $handleMap = [];
+    private array $runningCount = [];
 
     public function __construct(?LoggerInterface $logger = null){
         $this->logger = $logger ?? new NullLogger();
@@ -42,7 +43,29 @@ class MemoryJobQueue implements JobQueue, LoggerAwareInterface {
         return $jobToAssign;
     }
 
+    public function setRunning(ServerJobData $jobData) : void{
+        $count = &$this->runningCount[normalizeFunctionName($jobData->function)];
+        $count++;
+    }
+
+    public function setComplete(ServerJobData $jobData) : void{
+        $count =& $this->runningCount[normalizeFunctionName($jobData->function)];
+        $count--;
+    }
+
     public function findByHandle(string $handle) : ?ServerJobData{
         return $this->handleMap[$handle] ?? null;
+    }
+
+    public function getFunctionList() : array{
+        return array_keys($this->functionQueues);
+    }
+
+    public function getTotalJobs(string $function) : int{
+        return count($this->functionQueues[normalizeFunctionName($function)]);
+    }
+
+    public function getTotalRunning(string $function) : int{
+        return $this->runningCount[normalizeFunctionName($function)] ?? 0;
     }
 }

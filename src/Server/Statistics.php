@@ -2,79 +2,33 @@
 
 namespace Kicken\Gearman\Server;
 
-use Kicken\Gearman\Events\ServerEvents;
-use Kicken\Gearman\Events\WorkerEvents;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
-use WeakReference;
 
 class Statistics {
     use LoggerAwareTrait;
+
+    private JobQueue $jobQueue;
+    private WorkerManager $workerManager;
 
     private array $workerList = [];
     private array $functionQueueStats = [];
 
     public function __construct(WorkerManager $registry, JobQueue $jobQueue, LoggerInterface $logger){
         $this->logger = $logger;
-        $registry->on(ServerEvents::WORKER_CONNECTED, function(Worker $worker){
-            $this->logger->debug('New worker connected, Updating worker statistics.');
-            $this->workerList[] = WeakReference::create($worker);
-            $worker->on(WorkerEvents::REGISTERED_FUNCTION, function(string $function){
-                $this->logger->debug('Incrementing available worker statistic for ' . $function . '.');
-                $stats = &$this->getFunctionQueueStats($function);
-                $stats['workers'] += 1;
-            });
-            $worker->on(WorkerEvents::UNREGISTERED_FUNCTION, function(string $function){
-                $this->logger->debug('Decrementing available worker statistic for ' . $function . '.');
-                $stats = &$this->getFunctionQueueStats($function);
-                $stats['workers'] -= 1;
-            });
-            $worker->on(ServerEvents::JOB_STARTED, function(ServerJobData $job){
-                $this->logger->debug('Incrementing running jobs statistic for ' . $job->function);
-                $stats = &$this->getFunctionQueueStats($job->function);
-                $stats['running'] += 1;
-            });
-            $worker->on(ServerEvents::JOB_STOPPED, function(ServerJobData $job){
-                $this->logger->debug('Decrementing running jobs statistic for ' . $job->function);
-                $stats = &$this->getFunctionQueueStats($job->function);
-                $stats['running'] -= 1;
-                $stats['total'] -= 1;
-            });
-        });
-
-        $registry->on(ServerEvents::WORKER_DISCONNECTED, function(Worker $worker){
-            $this->logger->debug('Worker disconnected, updating worker statistics.');
-            $index = array_search(WeakReference::create($worker), $this->workerList, true);
-            if ($index !== false){
-                unset($this->workerList[$index]);
-            }
-            foreach ($worker->getAvailableFunctions() as $function){
-                $stats = &$this->getFunctionQueueStats($function);
-                $stats['workers'] -= 1;
-            }
-        });
-        /*$jobQueue->on(ServerEvents::JOB_QUEUED, function(ServerJobData $job){
-            $this->logger->debug('Incrementing total jobs statistic for ' . $job->function);
-            $stats = &$this->getFunctionQueueStats($job->function);
-            $stats['total'] += 1;
-        });*/
+        $this->jobQueue = $jobQueue;
+        $this->workerManager = $registry;
     }
 
     public function listWorkerDetails() : string{
         $list = [];
-        foreach ($this->workerList as $k => $ref){
-            /** @var ?Worker $worker */
-            $worker = $ref->get();
-            if ($worker){
-                $list[] = sprintf('%d %s %s: %s'
-                    , $worker->getConnection()->getFd()
-                    , $worker->getConnection()->getAddress()
-                    , $worker->getConnection()->getClientId()
-                    , implode(' ', $worker->getAvailableFunctions())
-                );
-            } else {
-                unset($this->workerList[$k]);
-            }
+        foreach ($this->workerManager->getAllWorkers() as $worker){
+            $list[] = sprintf('%d %s %s: %s'
+                , $worker->getConnection()->getFd()
+                , $worker->getConnection()->getAddress()
+                , $worker->getConnection()->getClientId()
+                , implode(' ', $worker->getAvailableFunctions())
+            );
         }
 
         return $this->implodeList($list);
@@ -82,9 +36,12 @@ class Statistics {
 
     public function listQueueDetails() : string{
         $list = [];
-        foreach ($this->functionQueueStats as $function => $details){
-            $list[] = sprintf("%s\t%d\t%d\t%d"
-                , $function, $details['total'], $details['running'], $details['workers']
+        foreach ($this->jobQueue->getFunctionList() as $function){
+            $list[] = sprintf("%s\t%d\t%d\t%d",
+                $function,
+                $this->jobQueue->getTotalJobs($function),
+                $this->jobQueue->getTotalRunning($function),
+                $this->workerManager->getCapableWorkerCount($function)
             );
         }
 
@@ -98,14 +55,5 @@ class Statistics {
         }
 
         return $response . '.';
-    }
-
-    private function &getFunctionQueueStats(string $function) : array{
-        $stats = &$this->functionQueueStats[$function];
-        if ($stats === null){
-            $stats = array_fill_keys(['total', 'running', 'workers'], 0);
-        }
-
-        return $stats;
     }
 }

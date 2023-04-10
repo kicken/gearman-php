@@ -20,12 +20,21 @@ class WorkerManager {
         /** @var Endpoint $connection */
         foreach ($this->registry as $connection){
             $worker = $this->getWorker($connection);
-            if ($worker->canDo($jobData)){
+            if ($worker->isSleeping() && $worker->canDo($jobData->function)){
                 $worker->wake();
             }
         }
 
         return null;
+    }
+
+    public function getAllWorkers() : array{
+        $workerList = [];
+        foreach ($this->registry as $connection){
+            $workerList[] = $this->getWorker($connection);
+        }
+
+        return $workerList;
     }
 
     public function getWorker(Endpoint $connection) : Worker{
@@ -51,6 +60,19 @@ class WorkerManager {
         $this->disconnectByFilter(function(Worker $worker){
             return $worker->isSleeping();
         });
+    }
+
+    public function getCapableWorkerCount(string $function) : int{
+        $count = 0;
+        foreach ($this->registry as $connection){
+            $worker = $this->getWorker($connection);
+            if ($worker->canDo($function)){
+                $count++;
+            }
+
+        }
+
+        return $count;
     }
 
     private function disconnectByFilter(callable $filter = null){

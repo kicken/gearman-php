@@ -87,6 +87,7 @@ class WorkerPacketHandler extends BinaryPacketHandler {
                     $job->running = false;
                     $job->sendToWatchers(new BinaryPacket(PacketMagic::RES, $packet->getType(), $packet->getArgumentList()));
                     $worker->assignJob(null);
+                    $this->jobQueue->setComplete($job);
                 }
                 break;
             default:
@@ -128,6 +129,7 @@ class WorkerPacketHandler extends BinaryPacketHandler {
             $arguments[] = $job->workload;
             $connection->writePacket(new BinaryPacket(PacketMagic::RES, $assignType, $arguments));
             $worker->assignJob($job);
+            $this->jobQueue->setRunning($job);
         }
     }
 }

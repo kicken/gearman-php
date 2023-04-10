@@ -57,16 +57,8 @@ class Worker {
         $this->sleeping = false;
     }
 
-    public function canDo(ServerJobData $jobData) : bool{
-        if ($this->currentAssignment){
-            return false;
-        }
-
-        if (!array_key_exists(normalizeFunctionName($jobData->function), $this->functionList)){
-            return false;
-        }
-
-        return true;
+    public function canDo(string $function) : bool{
+        return array_key_exists(normalizeFunctionName($function), $this->functionList);
     }
 
     public function assignJob(?ServerJobData $jobData){
