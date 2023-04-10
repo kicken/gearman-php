@@ -61,7 +61,7 @@ class ClientPacketHandler extends BinaryPacketHandler {
         $uniqueId = $packet->getArgument(1);
         $workload = $packet->getArgument(2);
 
-        $job = new ServerJobData($handle, $function, $uniqueId, $workload, $priority, $background);
+        $job = new ServerJobData($handle, $function, $uniqueId, $workload, $priority, $background, new \DateTimeImmutable());
         $this->jobQueue->enqueue($job);
         $connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::JOB_CREATED, [$job->jobHandle]));
         if (!$background){

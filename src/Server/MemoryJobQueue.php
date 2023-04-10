@@ -22,51 +22,22 @@ class MemoryJobQueue implements JobQueue, LoggerAwareInterface {
     public function enqueue(ServerJobData $jobData) : void{
         $fnKey = normalizeFunctionName($jobData->function);
         if (!isset($this->functionQueues[$fnKey])){
-            $this->functionQueues[$fnKey] = new \SplPriorityQueue();
+            $this->functionQueues[$fnKey] = new PriorityQueue();
         }
 
         $this->logger->debug('Inserted job info function queue', [
             'function' => $jobData->function
             , 'priority' => $jobData->priority
         ]);
-        $this->functionQueues[$fnKey]->insert($jobData, $jobData->priority);
+        $this->functionQueues[$fnKey]->enqueue($jobData);
         $this->handleMap[$fnKey] = $jobData;
     }
 
     public function dequeue(array $functionList) : ?ServerJobData{
-        $priorityList = [];
-        foreach ($functionList as $fn){
-            $fnKey = normalizeFunctionName($fn);
-            $queue = $this->functionQueues[$fnKey] ?? null;
-            if (!$queue || $queue->isEmpty()){
-                continue;
-            }
-
-            $queue->setExtractFlags(\SplPriorityQueue::EXTR_PRIORITY);
-            $priority = $queue->top();
-            $queue->setExtractFlags(\SplPriorityQueue::EXTR_DATA);
-            if ($priority !== false){
-                $this->logger->debug('Found possible job for function', [
-                    'function' => $fn
-                    , 'priority' => $priority
-                ]);
-                $priorityList[] = [$priority, $fnKey];
-            }
-        }
-
-        if (!$priorityList){
-            return null;
-        }
-
-        array_multisort(array_column($priorityList, 0), SORT_ASC, SORT_NUMERIC, $priorityList);
-        $highFunction = $priorityList[0][1];
-        /** @var ServerJobData $jobToAssign */
-        $jobToAssign = $this->functionQueues[$highFunction]->extract();
-        $this->logger->debug('Dequeued job', [
-            'function' => $jobToAssign->function
-            , 'handle' => $jobToAssign->jobHandle
-            , 'priority' => $jobToAssign->priority
-        ]);
+        $queueList = array_map(function(string $fn){
+            return $this->functionQueues[normalizeFunctionName($fn)] ?? null;
+        }, $functionList);
+        $jobToAssign = PriorityQueue::extractHighestAmong($queueList);
 
         return $jobToAssign;
     }

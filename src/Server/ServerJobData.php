@@ -11,13 +11,14 @@ class ServerJobData extends JobData {
     public string $uniqueId;
     public string $reducer;
     public string $workload;
+    public \DateTimeImmutable $created;
     public int $priority;
     public bool $background;
     public bool $running = false;
     /** @var Endpoint[] */
     private array $watchList = [];
 
-    public function __construct(string $jobHandle, string $function, string $uniqueId, string $workload, int $priority, bool $background){
+    public function __construct(string $jobHandle, string $function, string $uniqueId, string $workload, int $priority, bool $background, \DateTimeImmutable $created){
         parent::__construct($jobHandle);
         $this->function = $function;
         $this->uniqueId = $uniqueId;
@@ -25,6 +26,7 @@ class ServerJobData extends JobData {
         $this->workload = $workload;
         $this->priority = $priority;
         $this->background = $background;
+        $this->created = $created;
     }
 
     public function addWatcher(Endpoint $connection){
