@@ -190,9 +190,11 @@ class Client {
 
     public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ?string{
         $promise = $this->submitBackgroundJobAsync($function, $workload, $priority, $unique);
-        $job = $this->waitForPromiseResult($promise);
+        $promise = $promise->then(function(BackgroundJob $job){
+            return $job->getJobHandle();
+        });
 
-        return $job instanceof BackgroundJob ? $job->getJobHandle() : null;
+        return $this->waitForPromiseResult($promise);
     }
 
     /**
