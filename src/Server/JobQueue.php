@@ -18,4 +18,6 @@ interface JobQueue {
     public function getTotalJobs(string $function) : int;
 
     public function getTotalRunning(string $function) : int;
+
+    public function hasJobFor(Worker $worker) : bool;
 }

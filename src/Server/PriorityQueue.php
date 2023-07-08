@@ -6,9 +6,9 @@ class PriorityQueue extends \SplPriorityQueue {
     /**
      * @param PriorityQueue[] $queueList
      *
-     * @return ?ServerJobData
+     * @return ?PriorityQueue
      */
-    public static function extractHighestAmong(array $queueList) : ?ServerJobData{
+    public static function findHighestPriorityQueue(array $queueList) : ?PriorityQueue{
         $priorityList = [];
         foreach ($queueList as $queue){
             if ($queue && !$queue->isEmpty()){
@@ -26,7 +26,7 @@ class PriorityQueue extends \SplPriorityQueue {
         /** @var PriorityQueue $queue */
         $queue = $priorityList[0][1];
 
-        return $queue->extract();
+        return $queue;
     }
 
     private static function compareJobs(ServerJobData $a, ServerJobData $b) : int{

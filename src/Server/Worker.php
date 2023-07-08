@@ -50,10 +50,7 @@ class Worker {
     }
 
     public function wake(){
-        if ($this->sleeping){
-            $this->connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::NOOP));
-        }
-
+        $this->connection->writePacket(new BinaryPacket(PacketMagic::RES, PacketType::NOOP));
         $this->sleeping = false;
     }
 

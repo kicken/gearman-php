@@ -35,12 +35,10 @@ class MemoryJobQueue implements JobQueue, LoggerAwareInterface {
     }
 
     public function dequeue(array $functionList) : ?ServerJobData{
-        $queueList = array_map(function(string $fn){
-            return $this->functionQueues[normalizeFunctionName($fn)] ?? null;
-        }, $functionList);
-        $jobToAssign = PriorityQueue::extractHighestAmong($queueList);
+        $queueList = $this->findNonEmptyQueues($functionList);
+        $queue = PriorityQueue::findHighestPriorityQueue($queueList);
 
-        return $jobToAssign;
+        return $queue ? $queue->extract() : null;
     }
 
     public function setRunning(ServerJobData $jobData) : void{
@@ -67,5 +65,26 @@ class MemoryJobQueue implements JobQueue, LoggerAwareInterface {
 
     public function getTotalRunning(string $function) : int{
         return $this->runningCount[normalizeFunctionName($function)] ?? 0;
+    }
+
+    public function hasJobFor(Worker $worker) : bool{
+        $queueList = $this->findNonEmptyQueues($worker->getAvailableFunctions());
+
+        return PriorityQueue::findHighestPriorityQueue($queueList) !== null;
+    }
+
+    /**
+     * @param string[] $functionList
+     *
+     * @return PriorityQueue[]
+     */
+    private function findNonEmptyQueues(array $functionList) : array{
+        $queueList = array_map(function(string $fn){
+            return $this->functionQueues[normalizeFunctionName($fn)] ?? null;
+        }, $functionList);
+
+        return array_filter($queueList, function(?PriorityQueue $queue){
+            return $queue && !$queue->isEmpty();
+        });
     }
 }

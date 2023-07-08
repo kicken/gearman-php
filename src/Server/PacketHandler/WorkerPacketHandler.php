@@ -46,8 +46,14 @@ class WorkerPacketHandler extends BinaryPacketHandler {
                 $this->workerManager->getWorker($connection)->registerFunction($function, $timeout);
                 break;
             case PacketType::PRE_SLEEP:
-                $this->logger->info('Worker is going to sleep.', ['worker' => $connection->getAddress()]);
-                $this->workerManager->getWorker($connection)->sleep();
+                $worker = $this->workerManager->getWorker($connection);
+                if ($this->jobQueue->hasJobFor($worker)){
+                    $this->logger->info('Worker went to sleep, but work is available.', ['worker' => $connection->getAddress()]);
+                    $worker->wake();
+                } else {
+                    $this->logger->info('Worker is going to sleep.', ['worker' => $connection->getAddress()]);
+                    $worker->sleep();
+                }
                 break;
             case PacketType::GRAB_JOB:
             case PacketType::GRAB_JOB_UNIQ:
