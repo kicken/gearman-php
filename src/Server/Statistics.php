@@ -2,6 +2,7 @@
 
 namespace Kicken\Gearman\Server;
 
+use Kicken\Gearman\Server\JobQueue\JobQueue;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 

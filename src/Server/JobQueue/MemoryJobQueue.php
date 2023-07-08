@@ -1,7 +1,9 @@
 <?php
 
-namespace Kicken\Gearman\Server;
+namespace Kicken\Gearman\Server\JobQueue;
 
+use Kicken\Gearman\Server\ServerJobData;
+use Kicken\Gearman\Server\Worker;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;

@@ -1,6 +1,8 @@
 <?php
 
-namespace Kicken\Gearman\Server;
+namespace Kicken\Gearman\Server\JobQueue;
+
+use Kicken\Gearman\Server\ServerJobData;
 
 class PriorityQueue extends \SplPriorityQueue {
     /**

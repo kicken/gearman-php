@@ -4,8 +4,8 @@ namespace Kicken\Gearman;
 
 use Kicken\Gearman\Events\EndpointEvents;
 use Kicken\Gearman\Network\Endpoint;
-use Kicken\Gearman\Server\JobQueue;
-use Kicken\Gearman\Server\MemoryJobQueue;
+use Kicken\Gearman\Server\JobQueue\JobQueue;
+use Kicken\Gearman\Server\JobQueue\MemoryJobQueue;
 use Kicken\Gearman\Server\PacketHandler\AdminPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\ClientIdPacketHandler;
 use Kicken\Gearman\Server\PacketHandler\ClientPacketHandler;

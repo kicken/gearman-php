@@ -8,7 +8,7 @@ use Kicken\Gearman\Network\PacketHandler\BinaryPacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
-use Kicken\Gearman\Server\JobQueue;
+use Kicken\Gearman\Server\JobQueue\JobQueue;
 use Kicken\Gearman\Server\ServerJobData;
 use Kicken\Gearman\Server\WorkerManager;
 use Psr\Log\LoggerInterface;
