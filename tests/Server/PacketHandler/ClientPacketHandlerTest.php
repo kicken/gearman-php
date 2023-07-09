@@ -6,9 +6,10 @@ use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
-use Kicken\Gearman\Server\JobQueue;
+use Kicken\Gearman\Server\JobQueue\JobQueue;
 use Kicken\Gearman\Server\PacketHandler\ClientPacketHandler;
 use Kicken\Gearman\Server\ServerJobData;
+use Kicken\Gearman\Server\WorkerManager;
 use PHPUnit\Framework\TestCase;
 
 class ClientPacketHandlerTest extends TestCase {
@@ -17,9 +18,11 @@ class ClientPacketHandlerTest extends TestCase {
     private JobQueue $queue;
 
     protected function setUp() : void{
-        $this->queue = $this->getMockBuilder(JobQueue::class)->disableOriginalConstructor()->getMock();
+        $this->queue = $this->getMockBuilder(JobQueue::class)->getMock();
         $this->connection = $this->getMockBuilder(Endpoint::class)->getMock();
-        $this->handler = new ClientPacketHandler($this->queue);
+
+        $workManager = new WorkerManager();
+        $this->handler = new ClientPacketHandler('H:test', $this->queue, $workManager);
     }
 
     public function testSubmitJobPacket(){
@@ -31,7 +34,7 @@ class ClientPacketHandlerTest extends TestCase {
 
     public function testGetStatusPacket(){
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:1']);
-        $this->queue->expects($this->once())->method('lookupJob')->with('H:1');
+        $this->queue->expects($this->once())->method('findByHandle')->with('H:1');
         $this->connection->expects($this->once())->method('writePacket')->with($this->isInstanceOf(BinaryPacket::class));
         $this->handler->handlePacket($this->connection, $packet);
     }

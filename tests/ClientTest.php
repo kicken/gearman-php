@@ -3,11 +3,7 @@
 namespace Kicken\Gearman\Test;
 
 use Kicken\Gearman\Client;
-use Kicken\Gearman\Client\BackgroundJob;
-use Kicken\Gearman\Client\ForegroundJob;
 use Kicken\Gearman\Client\JobStatus;
-use Kicken\Gearman\Network\Endpoint;
-use Kicken\Gearman\Network\GearmanEndpoint;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Test\Network\AutoPlaybackServer;
@@ -15,88 +11,100 @@ use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
 use PHPUnit\Framework\TestCase;
 use React\EventLoop\Loop;
-use function React\Promise\resolve;
+use React\Promise\PromiseInterface;
 
 class ClientTest extends TestCase {
-    public function testDoesConnect(){
-        $connection = $this->getMockBuilder(Endpoint::class)->getMock();
-        $client = $this->createClient($connection);
-        $client->submitJob('reverse', 'test');
-    }
-
-    public function testSubmitForegroundJob(){
+    public function testSubmitForegroundJobSync(){
         $loop = Loop::get();
-        $client = $this->createClient(new AutoPlaybackServer([
+        $client = new Client(new AutoPlaybackServer([
             new IncomingPacket(PacketMagic::REQ, PacketType::SUBMIT_JOB, ['reverse', '', 'test'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_COMPLETE, ['H:test:1', 'tset'])
         ], $loop));
 
-        $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['created', 'completed'])->getMock();
-        $mock->expects($this->once())
-            ->method('created')
-            ->with($this->isInstanceOf(ForegroundJob::class))
-            ->willReturnCallback(function(ForegroundJob $job) use ($mock){
-                $this->assertEquals('H:test:1', $job->getJobHandle());
-                $job->onComplete([$mock, 'completed']);
-            });
-        $mock->expects($this->once())
-            ->method('completed')
-            ->with($this->isInstanceOf(ForegroundJob::class))
-            ->willReturnCallback(function(ForegroundJob $job){
-                $this->assertEquals('tset', $job->getResult());
-            });
-
-        $client->submitJob('reverse', 'test')->then([$mock, 'created'])->done();
+        $result = $client->submitJob('reverse', 'test');
+        $this->assertEquals('tset', $result);
         $loop->run();
     }
 
-    public function testSubmitBackgroundJob(){
+    public function testSubmitForegroundJobAsync(){
         $loop = Loop::get();
-        $client = $this->createClient(new AutoPlaybackServer([
+        $client = new Client(new AutoPlaybackServer([
+            new IncomingPacket(PacketMagic::REQ, PacketType::SUBMIT_JOB, ['reverse', '', 'test'])
+            , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
+            , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_COMPLETE, ['H:test:1', 'tset'])
+        ], $loop));
+
+        $result = $client->submitJobAsync('reverse', 'test');
+        $this->assertInstanceOf(PromiseInterface::class, $result);
+        $callables = $this->getMockBuilder(\stdClass::class)->addMethods(['fulfilled', 'rejected'])->getMock();
+        $callables->expects($this->once())->method('fulfilled')->with($this->isInstanceOf(Client\ForegroundJob::class));
+        $callables->expects($this->never())->method('rejected');
+        $result->then([$callables, 'fulfilled'], [$callables, 'rejected']);
+        $loop->run();
+    }
+
+    public function testSubmitBackgroundJobSync(){
+        $loop = Loop::get();
+        $client = new Client(new AutoPlaybackServer([
             new IncomingPacket(PacketMagic::REQ, PacketType::SUBMIT_JOB_BG, ['reverse', '', 'test'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
         ], $loop));
 
-        $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['created'])->getMock();
-        $mock->expects($this->once())
-            ->method('created')
-            ->with($this->isInstanceOf(BackgroundJob::class))
-            ->willReturnCallback(function(BackgroundJob $job){
-                $this->assertEquals('H:test:1', $job->getJobHandle());
-            });
-
-        $client->submitBackgroundJob('reverse', 'test')->then([$mock, 'created'])->done();
+        $this->assertEquals('H:test:1', $client->submitBackgroundJob('reverse', 'test'));
         $loop->run();
     }
 
-    public function testGetJobStatus(){
+    public function testSubmitBackgroundJobAsync(){
         $loop = Loop::get();
-        $client = $this->createClient(new AutoPlaybackServer([
+        $client = new Client(new AutoPlaybackServer([
+            new IncomingPacket(PacketMagic::REQ, PacketType::SUBMIT_JOB_BG, ['reverse', '', 'test'])
+            , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
+        ], $loop));
+
+        $result = $client->submitBackgroundJobAsync('reverse', 'test');
+        $this->assertInstanceOf(PromiseInterface::class, $result);
+
+        $callables = $this->getMockBuilder(\stdClass::class)->addMethods(['fulfilled', 'rejected'])->getMock();
+        $callables->expects($this->once())->method('fulfilled')->with($this->isInstanceOf(Client\BackgroundJob::class));
+        $callables->expects($this->never())->method('rejected');
+        $result->then([$callables, 'fulfilled'], [$callables, 'rejected']);
+
+        $loop->run();
+    }
+
+    public function testGetJobStatusSync(){
+        $loop = Loop::get();
+        $client = new Client(new AutoPlaybackServer([
             new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::STATUS_RES, ['H:test:1', 1, 1, 5, 10])
         ], $loop));
 
-        $mock = $this->getMockBuilder(\stdClass::class)->addMethods(['statusReady'])->getMock();
-        $mock->expects($this->once())
-            ->method('statusReady')
-            ->with($this->isInstanceOf(JobStatus::class))
-            ->willReturnCallback(function(JobStatus $job){
-                $this->assertEquals('H:test:1', $job->getJobHandle());
-                $this->assertEquals(5, $job->getNumerator());
-                $this->assertEquals(10, $job->getDenominator());
-                $this->assertTrue($job->isKnown());
-                $this->assertTrue($job->isRunning());
-            });
-
-        $client->getJobStatus('H:test:1')->then([$mock, 'statusReady'])->done();
+        $status = $client->getJobStatus('H:test:1');
+        $this->assertInstanceOf(JobStatus::class, $status);
+        $this->assertEquals('H:test:1', $status->getJobHandle());
+        $this->assertEquals(1, $status->isKnown());
+        $this->assertEquals(1, $status->isRunning());
+        $this->assertEquals(5, $status->getNumerator());
+        $this->assertEquals(10, $status->getDenominator());
         $loop->run();
     }
 
-    private function createClient(Endpoint $connection) : Client{
-        $endpoint = $this->getMockBuilder(GearmanEndpoint::class)->disableOriginalConstructor()->getMock();
-        $endpoint->expects($this->atLeastOnce())->method('connect')->willReturn(resolve($connection));
+    public function testGetJobStatusAsync(){
+        $loop = Loop::get();
+        $client = new Client(new AutoPlaybackServer([
+            new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
+            , new OutgoingPacket(PacketMagic::RES, PacketType::STATUS_RES, ['H:test:1', 1, 1, 5, 10])
+        ], $loop));
 
-        return new Client($endpoint);
+        $result = $client->getJobStatusAsync('H:test:1');
+        $this->assertInstanceOf(PromiseInterface::class, $result);
+
+        $callables = $this->getMockBuilder(\stdClass::class)->addMethods(['fulfilled', 'rejected'])->getMock();
+        $callables->expects($this->once())->method('fulfilled')->with($this->isInstanceOf(Client\JobStatus::class));
+        $callables->expects($this->never())->method('rejected');
+        $result->then([$callables, 'fulfilled'], [$callables, 'rejected']);
+
+        $loop->run();
     }
 }

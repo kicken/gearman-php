@@ -8,7 +8,7 @@ use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
 use Kicken\Gearman\Server;
-use Kicken\Gearman\Server\JobQueue;
+use Kicken\Gearman\Server\JobQueue\JobQueue;
 use Kicken\Gearman\Server\PacketHandler\WorkerPacketHandler;
 use Kicken\Gearman\Server\ServerJobData;
 use Kicken\Gearman\Server\Worker;
@@ -29,8 +29,10 @@ class WorkerPacketHandlerTest extends TestCase {
         $this->connection = $this->getMockBuilder(Endpoint::class)->getMock();
         $this->manager = $this->getMockBuilder(WorkerManager::class)->disableOriginalConstructor()->getMock();
         $this->worker = $this->getMockBuilder(Worker::class)->setConstructorArgs([$this->connection])->getMock();
-        $this->queue = $this->getMockBuilder(JobQueue::class)->setConstructorArgs([$this->manager])->getMock();
-        $this->job = $this->getMockBuilder(ServerJobData::class)->setConstructorArgs(['H:1', 'test', '', '', JobPriority::NORMAL, false])->getMock();
+        $this->queue = $this->getMockBuilder(JobQueue::class)->getMock();
+        $this->job = $this->getMockBuilder(ServerJobData::class)->setConstructorArgs(
+            ['H:1', 'test', '', '', JobPriority::NORMAL, false, new \DateTimeImmutable()]
+        )->getMock();
         $this->handler = new WorkerPacketHandler($server, $this->manager, $this->queue);
         $this->queue->enqueue($this->job);
     }
@@ -52,7 +54,8 @@ class WorkerPacketHandlerTest extends TestCase {
     public function testGrabJob(){
         $packet = new BinaryPacket(PacketMagic::REQ, PacketType::GRAB_JOB, []);
         $this->expectGetWorkerCall();
-        $this->queue->expects($this->once())->method('assignJob')->with($this->worker)->willReturn($this->job);
+        $this->worker->method('getAvailableFunctions')->willReturn(['test']);
+        $this->queue->expects($this->once())->method('dequeue')->with(['test'])->willReturn($this->job);
         $this->handler->handlePacket($this->connection, $packet);
     }
 

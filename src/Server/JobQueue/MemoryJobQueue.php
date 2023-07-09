@@ -33,7 +33,7 @@ class MemoryJobQueue implements JobQueue, LoggerAwareInterface {
             , 'priority' => $jobData->priority
         ]);
         $this->functionQueues[$fnKey]->enqueue($jobData);
-        $this->handleMap[$fnKey] = $jobData;
+        $this->handleMap[$jobData->jobHandle] = $jobData;
     }
 
     public function dequeue(array $functionList) : ?ServerJobData{

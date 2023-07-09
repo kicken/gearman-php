@@ -21,6 +21,8 @@ class PacketPlaybackConnection implements Endpoint {
     private array $handlerList = [];
     private array $sequence;
     private PacketBuffer $writeBuffer;
+    private array $options = [];
+    private string $clientId = 'playback';
 
     public function __construct(array $packetSequence = []){
         $this->sequence = $packetSequence;
@@ -64,7 +66,7 @@ class PacketPlaybackConnection implements Endpoint {
         }
     }
 
-    public function connect(bool $autoDisconnect) : PromiseInterface{
+    public function connect() : PromiseInterface{
         return resolve($this);
     }
 
@@ -89,6 +91,20 @@ class PacketPlaybackConnection implements Endpoint {
                 throw new \RuntimeException('Playback sequence must consist of OutgoingPacket or IncomingPacket elements only.');
             }
         }
+
+        return true;
+    }
+
+    public function setClientId(string $clientId){
+        $this->clientId = $clientId;
+    }
+
+    public function getClientId() : string{
+        return $this->clientId;
+    }
+
+    public function setOption(string $option) : bool{
+        $this->options[] = $option;
 
         return true;
     }

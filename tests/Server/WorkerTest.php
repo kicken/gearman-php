@@ -2,10 +2,8 @@
 
 namespace Kicken\Gearman\Test\Server;
 
-use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
-use Kicken\Gearman\Server\ServerJobData;
 use Kicken\Gearman\Server\Worker;
 use PHPUnit\Framework\TestCase;
 
@@ -28,14 +26,12 @@ class WorkerTest extends TestCase {
     }
 
     public function testCanDo(){
-        $job = new ServerJobData('H:1', 'test', '', '', JobPriority::NORMAL, false);
-        $this->assertTrue($this->worker->canDo($job));
+        $this->assertTrue($this->worker->canDo('test'));
     }
 
     public function testUnregisterFunction(){
-        $job = new ServerJobData('H:1', 'test', '', '', JobPriority::NORMAL, false);
         $this->worker->unregisterFunction('test');
-        $this->assertFalse($this->worker->canDo($job));
+        $this->assertFalse($this->worker->canDo('test'));
     }
 
     public function testGetAvailableFunctions(){
