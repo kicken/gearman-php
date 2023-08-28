@@ -33,7 +33,6 @@ use Kicken\Gearman\Client\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Client\PacketHandler\PingHandler;
 use Kicken\Gearman\Exception\EmptyServerListException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
-use Kicken\Gearman\Exception\NoWorkException;
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Network\Endpoint;
@@ -73,8 +72,8 @@ class Client {
     private bool $stopWorking = false;
 
     private LoopInterface $loop;
-    private GrabJobHandler $grabJobHandler;
-    private SleepHandler $sleepHandler;
+    private ?GrabJobHandler $grabJobHandler = null;
+    private ?SleepHandler $sleepHandler = null;
 
     /**
      * Create a new Gearman Client, used for submitting new jobs or checking the status of existing jobs.
@@ -262,8 +261,9 @@ class Client {
             throw new NoRegisteredFunctionException;
         }
 
-        $this->workAsync()->done();
-        $this->loop->run();
+        while ($job = $this->nextJob()){
+            $this->executeJob($job);
+        }
     }
 
     /**
@@ -271,42 +271,25 @@ class Client {
      * Main script must run the main loop at some future point.
      *
      */
-    public function workAsync() : PromiseInterface{
+    public function nextJobAsync() : PromiseInterface{
         if ($this->stopWorking){
             return reject(new \GearmanException('Worker stopped'));
         }
 
-        $this->grabJobHandler = new GrabJobHandler($this->logger);
-        $this->sleepHandler = new SleepHandler($this->logger);
+        $this->grabJobHandler ??= new GrabJobHandler($this->logger);
+        $this->sleepHandler ??= new SleepHandler($this->logger);
 
         return $this->connect(true)->then(function(array $serverList){
-            $tryNext = function() use (&$serverList, &$tryNext){
-                if (!$serverList){
-                    return;
-                }
-
-                $server = array_shift($serverList);
-                $grabLoop = function() use ($server, &$grabLoop){
-                    return $this->grabJobHandler->grabJob($server)->then(function(WorkerJob $job) use ($grabLoop){
-                        $this->functionList->run($job);
-
-                        return $grabLoop();
-                    });
-                };
-                $grabLoop()->then(null, function($error) use ($server, &$tryNext){
-                    if (!$error instanceof NoWorkException){
-                        throw $error;
-                    }
-
-                    $this->sleepHandler->sleep($server)->then(function() use ($server){
-                        $this->grabSleepLoop($server);
-                    });
-                    $tryNext();
-                });
-            };
-
-            $tryNext();
+            return $this->grabNextJob($serverList);
         });
+    }
+
+    public function nextJob() : ?WorkerJob{
+        return $this->waitForPromiseResult($this->nextJobAsync());
+    }
+
+    public function executeJob(WorkerJob $job){
+        $this->functionList->run($job);
     }
 
     /**
@@ -359,17 +342,19 @@ class Client {
         }
     }
 
-    private function grabSleepLoop(Endpoint $server){
-        $this->grabJobHandler->grabJob($server)->then(function(WorkerJob $job){
-            $this->functionList->run($job);
-        }, function($error) use ($server){
-            if (!$error instanceof NoWorkException){
-                throw $error;
-            }
+    private function grabNextJob(array $serverList, array $sleepingConnections = []){
+        if (!$serverList){
+            return any($sleepingConnections)->then(function(){
+                return $this->nextJobAsync();
+            });
+        }
 
-            return $this->sleepHandler->sleep($server);
-        })->done(function() use ($server){
-            $this->grabSleepLoop($server);
+        $server = array_shift($serverList);
+
+        return $this->grabJobHandler->grabJob($server)->then(null, function() use ($server, $serverList, &$sleepingConnections){
+            $sleepingConnections[] = $this->sleepHandler->sleep($server);
+
+            return $this->grabNextJob($serverList, $sleepingConnections);
         });
     }
 
@@ -379,6 +364,7 @@ class Client {
         $promise->done(function($value) use (&$complete, &$result){
             $result = $value;
             $complete = true;
+            $this->loop->stop();
         });
 
         $this->loop->run();
