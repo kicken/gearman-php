@@ -359,17 +359,25 @@ class Client {
     }
 
     private function waitForPromiseResult(PromiseInterface $promise){
-        $complete = false;
-        $result = null;
-        $promise->done(function($value) use (&$complete, &$result){
+        $result = $exception = null;
+        $promise->done(function($value) use (&$result){
             $result = $value;
-            $complete = true;
+            $this->loop->stop();
+        }, function($e) use (&$exception){
+            if (is_array($e)){
+                $e = current($e);
+            }
+            if ($e instanceof \Throwable){
+                $exception = $e;
+            } else {
+                $exception = new \RuntimeException($e);
+            }
             $this->loop->stop();
         });
 
         $this->loop->run();
-        if (!$complete){
-            throw new \RuntimeException('Promise did not resolve.');
+        if ($exception){
+            throw $exception;
         }
 
         return $result;
