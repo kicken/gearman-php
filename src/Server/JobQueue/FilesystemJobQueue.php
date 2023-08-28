@@ -33,7 +33,9 @@ class FilesystemJobQueue extends MemoryJobQueue {
 
     public function dequeue(array $functionList) : ?ServerJobData{
         $jobData = parent::dequeue($functionList);
-        $this->remove($jobData);
+        if ($jobData){
+            $this->remove($jobData);
+        }
 
         return $jobData;
     }
