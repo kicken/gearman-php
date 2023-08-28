@@ -16,7 +16,7 @@ class WorkerManager {
         $this->registry = new \SplObjectStorage();
     }
 
-    public function wakeAllCandidates(ServerJobData $jobData) : ?Worker{
+    public function wakeAllCandidates(ServerJobData $jobData) : void{
         /** @var Endpoint $connection */
         foreach ($this->registry as $connection){
             $worker = $this->getWorker($connection);
@@ -24,8 +24,6 @@ class WorkerManager {
                 $worker->wake();
             }
         }
-
-        return null;
     }
 
     public function getAllWorkers() : array{
