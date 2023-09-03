@@ -1,6 +1,6 @@
 <?php
 
-namespace Kicken\Gearman\Test\Server;
+namespace Kicken\Gearman\Test\Server\JobQueue;
 
 use DateTimeImmutable;
 use Kicken\Gearman\Job\JobPriority;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Kicken\Gearman\Test\Server;
+namespace Kicken\Gearman\Test\Server\JobQueue;
 
 use Kicken\Gearman\Exception\DirectoryDoesNotExistException;
 use Kicken\Gearman\Job\JobPriority;
