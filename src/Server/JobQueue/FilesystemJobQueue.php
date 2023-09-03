@@ -4,10 +4,11 @@
 namespace Kicken\Gearman\Server\JobQueue;
 
 use Kicken\Gearman\Server\ServerJobData;
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
-class FilesystemJobQueue extends MemoryJobQueue {
+class FilesystemJobQueue extends MemoryJobQueue implements LoggerAwareInterface {
     use LoggerAwareTrait;
 
     private string $directory;

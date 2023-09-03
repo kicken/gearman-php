@@ -87,13 +87,23 @@ class Client {
         $this->logger = new NullLogger();
     }
 
-    public function setClientId(string $clientId){
+    /**
+     * Set a client identifier, used in administrator status reports.
+     *
+     * @param string $clientId
+     */
+    public function setClientId(string $clientId) : void{
         foreach ($this->serverList as $server){
             $server->setClientId($clientId);
         }
     }
 
-    public function setLogger(LoggerInterface $logger){
+    /**
+     * Set a logger
+     *
+     * @param LoggerInterface $logger
+     */
+    public function setLogger(LoggerInterface $logger) : void{
         $this->originalSetLogger($logger);
         foreach ($this->serverList as $server){
             if ($server instanceof LoggerAwareInterface){
@@ -102,12 +112,18 @@ class Client {
         }
     }
 
+    /**
+     * Test if any server is available.
+     */
     public function pingServerAsync() : PromiseInterface{
         return $this->connect()->then(function(Endpoint $connection){
             return (new PingHandler($this->logger))->ping($connection);
         });
     }
 
+    /**
+     * Test if any server is available.
+     */
     public function pingServer() : float{
         $promise = $this->pingServerAsync();
         $result = $this->waitForPromiseResult($promise);
@@ -116,8 +132,7 @@ class Client {
     }
 
     /**
-     * Submit a new job to the server.  Results can be retrieved once the job is complete through the returned
-     * ClientJob object.  Use the wait method to wait for the job to complete.
+     * Submit a new job to the server.  The returned promise will be resolved with the job results when the job has completed.
      *
      * @param string $function The function to be run.
      * @param string $workload Data for the function to operate on.
@@ -136,6 +151,16 @@ class Client {
         });
     }
 
+    /**
+     * Submit a new job to the server.  Returns the results of the job after it has completed.
+     *
+     * @param string $function
+     * @param string $workload
+     * @param int $priority
+     * @param string $unique
+     *
+     * @return string|null
+     */
     public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ?string{
         $promise = $this->submitJobAsync($function, $workload, $priority, $unique);
         $promise = $promise->then(function(ForegroundJob $job){
@@ -187,6 +212,18 @@ class Client {
         });
     }
 
+    /**
+     * Submit a new job to the server for execution as a background task.  Background tasks are unable to pass back any
+     * result data, but can provide status information regarding the progress of the job.  Status information must be
+     * obtained by calling the getJobStatus function
+     *
+     * @param string $function The function to be run.
+     * @param string $workload Data for the function to operate on.
+     * @param int $priority One of the JobPriority constants.
+     * @param string $unique A unique ID for the job.
+     *
+     * @return string|null
+     */
     public function submitBackgroundJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ?string{
         $promise = $this->submitBackgroundJobAsync($function, $workload, $priority, $unique);
         $promise = $promise->then(function(BackgroundJob $job){
@@ -214,6 +251,14 @@ class Client {
         });
     }
 
+    /**
+     * Submit a job status request to determine the status of a background job.
+     *  You must wait for the status response by calling the wait method.
+     *
+     * @param string $handle
+     *
+     * @return JobStatus|null
+     */
     public function getJobStatus(string $handle) : ?JobStatus{
         $promise = $this->getJobStatusAsync($handle);
         $result = $this->waitForPromiseResult($promise);
@@ -221,6 +266,9 @@ class Client {
         return $result;
     }
 
+    /**
+     * Disconnect from all servers.
+     */
     public function disconnect() : void{
         foreach ($this->serverList as $server){
             $server->disconnect();
@@ -233,8 +281,6 @@ class Client {
      * @param string $name The name of the function.
      * @param callable $callback A callback to be executed when a job is received.
      * @param int|null $timeout A time limit on how the server should wait for a response.
-     *
-     * @return PromiseInterface
      */
     public function registerFunction(string $name, callable $callback, int $timeout = null) : self{
         $this->functionList->register(new WorkerFunction($name, $callback, $timeout));
@@ -269,7 +315,6 @@ class Client {
     /**
      * Begin the process of accepting jobs while allowing the main script to continue.
      * Main script must run the main loop at some future point.
-     *
      */
     public function nextJobAsync() : PromiseInterface{
         if ($this->stopWorking){
@@ -284,11 +329,23 @@ class Client {
         });
     }
 
+    /**
+     * Acquire a new job from any server.
+     *
+     * @return WorkerJob|null
+     */
     public function nextJob() : ?WorkerJob{
         return $this->waitForPromiseResult($this->nextJobAsync());
     }
 
-    public function executeJob(WorkerJob $job){
+    /**
+     * Run a job.
+     *
+     * @param WorkerJob $job
+     *
+     * @return void
+     */
+    public function executeJob(WorkerJob $job) : void{
         $this->functionList->run($job);
     }
 
@@ -299,12 +356,6 @@ class Client {
         $this->stopWorking = true;
     }
 
-    /**
-     * @param Endpoint $server
-     * @param ClientJobData $jobDetails
-     *
-     * @return PromiseInterface
-     */
     private function createJob(Endpoint $server, ClientJobData $jobDetails) : PromiseInterface{
         return (new CreateJobHandler($jobDetails, $this->logger))->createJob($server);
     }
@@ -342,7 +393,7 @@ class Client {
         }
     }
 
-    private function grabNextJob(array $serverList, array $sleepingConnections = []){
+    private function grabNextJob(array $serverList, array $sleepingConnections = []) : PromiseInterface{
         if (!$serverList){
             return any($sleepingConnections)->then(function(){
                 return $this->nextJobAsync();

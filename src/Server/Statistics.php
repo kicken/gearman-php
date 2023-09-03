@@ -3,10 +3,11 @@
 namespace Kicken\Gearman\Server;
 
 use Kicken\Gearman\Server\JobQueue\JobQueue;
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
-class Statistics {
+class Statistics implements LoggerAwareInterface {
     use LoggerAwareTrait;
 
     private JobQueue $jobQueue;

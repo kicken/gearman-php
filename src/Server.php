@@ -14,17 +14,12 @@ use Kicken\Gearman\Server\PacketHandler\WorkerPacketHandler;
 use Kicken\Gearman\Server\Statistics;
 use Kicken\Gearman\Server\WorkerManager;
 use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 
-class Server {
-    use LoggerAwareTrait {
-        LoggerAwareTrait::setLogger as originalSetLogger;
-    }
-
+class Server implements LoggerAwareInterface {
     /** @var Endpoint[] */
     private array $endpointList;
     private LoopInterface $loop;
@@ -33,6 +28,7 @@ class Server {
     private Statistics $statistics;
     private bool $isShutdown = false;
     private string $handlePrefix;
+    private LoggerInterface $logger;
 
     public function __construct($endpointList = '127.0.0.1:4730', string $handlePrefix = null, JobQueue $queue = null, LoopInterface $loop = null){
         if (!is_array($endpointList)){
@@ -48,12 +44,22 @@ class Server {
         $this->handlePrefix = $handlePrefix ?? 'H:' . bin2hex(random_bytes(4));
     }
 
+    /**
+     * Determine if the server has been shutdown.
+     *
+     * @return bool
+     */
     public function isShutdown() : bool{
         return $this->isShutdown;
     }
 
-    public function setLogger(LoggerInterface $logger){
-        $this->originalSetLogger($logger);
+    /**
+     * Set a logger.
+     *
+     * @param LoggerInterface $logger
+     */
+    public function setLogger(LoggerInterface $logger) : void{
+        $this->logger = $logger;
         $this->statistics->setLogger($logger);
         foreach ($this->endpointList as $item){
             if ($item instanceof LoggerAwareInterface){
@@ -62,7 +68,12 @@ class Server {
         }
     }
 
-    public function run(){
+    /**
+     * Start listening on the configured endpoints for client connections.
+     *
+     * @return void
+     */
+    public function run() : void{
         foreach ($this->endpointList as $endpoint){
             $this->logger->info('Listening on ' . $endpoint->getAddress());
             $endpoint->listen(function(Endpoint $stream){
@@ -88,6 +99,13 @@ class Server {
         $this->loop->run();
     }
 
+    /**
+     * Stop accepting new client connections and shutdown the server.
+     *
+     * @param bool $graceful Let current worker clients continue their jobs.
+     *
+     * @return void
+     */
     public function shutdown(bool $graceful = true) : void{
         $this->logger->notice('Server shutdown requested.', ['graceful' => $graceful]);
         $this->isShutdown = true;

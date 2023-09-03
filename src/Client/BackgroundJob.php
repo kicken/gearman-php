@@ -16,7 +16,7 @@ class BackgroundJob extends ClientJob {
 
     public function getStatus() : PromiseInterface{
         if ($this->client){
-            return $this->client->getJobStatus($this->getJobHandle());
+            return $this->client->getJobStatusAsync($this->getJobHandle());
         } else {
             return reject('No client');
         }
