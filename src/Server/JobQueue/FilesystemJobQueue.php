@@ -3,6 +3,7 @@
 
 namespace Kicken\Gearman\Server\JobQueue;
 
+use Kicken\Gearman\Exception\DirectoryDoesNotExistException;
 use Kicken\Gearman\Server\ServerJobData;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -21,7 +22,7 @@ class FilesystemJobQueue extends MemoryJobQueue implements LoggerAwareInterface 
         }
 
         if (!file_exists($directory)){
-            throw new \RuntimeException('Directory does not exist.');
+            throw new DirectoryDoesNotExistException($directory);
         }
 
         $this->restore();
