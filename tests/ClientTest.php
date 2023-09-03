@@ -6,9 +6,9 @@ use Kicken\Gearman\Client;
 use Kicken\Gearman\Client\JobStatus;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
-use Kicken\Gearman\Test\Network\AutoPlaybackServer;
 use Kicken\Gearman\Test\Network\IncomingPacket;
 use Kicken\Gearman\Test\Network\OutgoingPacket;
+use Kicken\Gearman\Test\Network\PacketPlaybackConnection;
 use PHPUnit\Framework\TestCase;
 use React\EventLoop\Loop;
 use React\Promise\PromiseInterface;
@@ -16,11 +16,11 @@ use React\Promise\PromiseInterface;
 class ClientTest extends TestCase {
     public function testSubmitForegroundJobSync(){
         $loop = Loop::get();
-        $client = new Client(new AutoPlaybackServer([
+        $client = new Client(new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::SUBMIT_JOB, ['reverse', '', 'test'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_COMPLETE, ['H:test:1', 'tset'])
-        ], $loop));
+        ]));
 
         $result = $client->submitJob('reverse', 'test');
         $this->assertEquals('tset', $result);
@@ -29,11 +29,11 @@ class ClientTest extends TestCase {
 
     public function testSubmitForegroundJobAsync(){
         $loop = Loop::get();
-        $client = new Client(new AutoPlaybackServer([
+        $client = new Client(new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::SUBMIT_JOB, ['reverse', '', 'test'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_COMPLETE, ['H:test:1', 'tset'])
-        ], $loop));
+        ]));
 
         $result = $client->submitJobAsync('reverse', 'test');
         $this->assertInstanceOf(PromiseInterface::class, $result);
@@ -46,10 +46,10 @@ class ClientTest extends TestCase {
 
     public function testSubmitBackgroundJobSync(){
         $loop = Loop::get();
-        $client = new Client(new AutoPlaybackServer([
+        $client = new Client(new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::SUBMIT_JOB_BG, ['reverse', '', 'test'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
-        ], $loop));
+        ]));
 
         $this->assertEquals('H:test:1', $client->submitBackgroundJob('reverse', 'test'));
         $loop->run();
@@ -57,10 +57,10 @@ class ClientTest extends TestCase {
 
     public function testSubmitBackgroundJobAsync(){
         $loop = Loop::get();
-        $client = new Client(new AutoPlaybackServer([
+        $client = new Client(new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::SUBMIT_JOB_BG, ['reverse', '', 'test'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
-        ], $loop));
+        ]));
 
         $result = $client->submitBackgroundJobAsync('reverse', 'test');
         $this->assertInstanceOf(PromiseInterface::class, $result);
@@ -75,10 +75,10 @@ class ClientTest extends TestCase {
 
     public function testGetJobStatusSync(){
         $loop = Loop::get();
-        $client = new Client(new AutoPlaybackServer([
+        $client = new Client(new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::STATUS_RES, ['H:test:1', 1, 1, 5, 10])
-        ], $loop));
+        ]));
 
         $status = $client->getJobStatus('H:test:1');
         $this->assertInstanceOf(JobStatus::class, $status);
@@ -92,10 +92,10 @@ class ClientTest extends TestCase {
 
     public function testGetJobStatusAsync(){
         $loop = Loop::get();
-        $client = new Client(new AutoPlaybackServer([
+        $client = new Client(new PacketPlaybackConnection([
             new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::STATUS_RES, ['H:test:1', 1, 1, 5, 10])
-        ], $loop));
+        ]));
 
         $result = $client->getJobStatusAsync('H:test:1');
         $this->assertInstanceOf(PromiseInterface::class, $result);

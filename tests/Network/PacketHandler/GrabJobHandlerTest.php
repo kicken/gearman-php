@@ -16,12 +16,13 @@ use PHPUnit\Framework\TestCase;
 class GrabJobHandlerTest extends TestCase {
     public function testGrabJobPacketSent(){
         $server = new PacketPlaybackConnection([
-            new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
+            $packet = new IncomingPacket(PacketMagic::REQ, PacketType::GRAB_JOB_UNIQ)
         ]);
 
         $handler = new GrabJobHandler();
         $handler->grabJob($server);
-        $this->assertTrue($server->playback());
+        $server->playback();
+        $this->assertTrue($server->didReceivePacket($packet));
     }
 
     public function testGrabJobResolvesWithJob(){
@@ -35,7 +36,7 @@ class GrabJobHandlerTest extends TestCase {
         $handler->grabJob($server)->then(function(WorkerJob $job) use (&$jobReceived){
             $jobReceived = $job;
         });
-        $this->assertTrue($server->playback());
+        $server->playback();
 
         $this->assertInstanceOf(WorkerJob::class, $jobReceived);
         $this->assertEquals('reverse', $jobReceived->getFunction());
@@ -59,7 +60,7 @@ class GrabJobHandlerTest extends TestCase {
             ->method('__invoke');
 
         $handler->grabJob($server)->then($resolveHandler, $rejectHandler);
-        $this->assertTrue($server->playback());
+        $server->playback();
     }
 
     /**

@@ -14,6 +14,8 @@ use Kicken\Gearman\Test\Network\PacketPlaybackConnection;
 use PHPUnit\Framework\TestCase;
 
 class CreateJobHandlerTest extends TestCase {
+    private PacketPlaybackConnection $server;
+
     public function testJobHandleIsReceived(){
         $data = new ClientJobData('reverse', 'test', '', JobPriority::NORMAL);
         $job = new ForegroundJob($data);
@@ -44,12 +46,7 @@ class CreateJobHandlerTest extends TestCase {
     }
 
     public function testForegroundJobStatusCallbackTriggered(){
-        /**
-         * @var ForegroundJob $job
-         * @var CreateJobHandler $handler
-         * @var PacketPlaybackConnection $server
-         */
-        [$job, , $server] = $this->setupCallbackTest([
+        $job = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_STATUS, ['H:test:1', 1, 10])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_STATUS, ['H:test:1', 2, 10])
@@ -61,7 +58,7 @@ class CreateJobHandlerTest extends TestCase {
             $numerator += $job->getNumerator();
             $denominator += $job->getDenominator();
         });
-        $server->playback();
+        $this->server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertEquals(6, $numerator);
@@ -69,12 +66,7 @@ class CreateJobHandlerTest extends TestCase {
     }
 
     public function testForegroundJobDataCallbackTriggered(){
-        /**
-         * @var ForegroundJob $job
-         * @var CreateJobHandler $handler
-         * @var PacketPlaybackConnection $server
-         */
-        [$job, $handler, $server] = $this->setupCallbackTest([
+        $job = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_DATA, ['H:test:1', 'Ready...'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_DATA, ['H:test:1', 'Set...'])
@@ -85,7 +77,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onData(function() use (&$data, $job){
             $data .= $job->getData();
         });
-        $server->playback();
+        $this->server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertEquals('Ready...Set...Go!', $data);
@@ -93,12 +85,7 @@ class CreateJobHandlerTest extends TestCase {
     }
 
     public function testForegroundJobWarningCallbackTriggered(){
-        /**
-         * @var ForegroundJob $job
-         * @var CreateJobHandler $handler
-         * @var PacketPlaybackConnection $server
-         */
-        [$job, $handler, $server] = $this->setupCallbackTest([
+        $job = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_WARNING, ['H:test:1', 'Warning!'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_WARNING, ['H:test:1', 'Warning!'])
@@ -109,7 +96,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onWarning(function() use (&$data, $job){
             $data .= $job->getData();
         });
-        $server->playback();
+        $this->server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertEquals('Warning!Warning!Warning!', $data);
@@ -117,12 +104,7 @@ class CreateJobHandlerTest extends TestCase {
     }
 
     public function testForegroundJobCompleteCallbackTriggered(){
-        /**
-         * @var ForegroundJob $job
-         * @var CreateJobHandler $handler
-         * @var PacketPlaybackConnection $server
-         */
-        [$job, $handler, $server] = $this->setupCallbackTest([
+        $job = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_STATUS, ['H:test:1', 10, 10])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_DATA, ['H:test:1', 'Finished'])
@@ -133,7 +115,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onComplete(function() use (&$complete){
             $complete = true;
         });
-        $server->playback();
+        $this->server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertTrue($complete);
@@ -144,12 +126,7 @@ class CreateJobHandlerTest extends TestCase {
     }
 
     public function testForegroundJobFailCallbackTriggered(){
-        /**
-         * @var ForegroundJob $job
-         * @var CreateJobHandler $handler
-         * @var PacketPlaybackConnection $server
-         */
-        [$job, $handler, $server] = $this->setupCallbackTest([
+        $job = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_FAIL, ['H:test:1'])
         ]);
@@ -158,19 +135,14 @@ class CreateJobHandlerTest extends TestCase {
         $job->onFail(function() use (&$failure){
             $failure = true;
         });
-        $server->playback();
+        $this->server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertTrue($failure);
     }
 
     public function testForegroundJobExceptionCallbackTriggered(){
-        /**
-         * @var ForegroundJob $job
-         * @var CreateJobHandler $handler
-         * @var PacketPlaybackConnection $server
-         */
-        [$job, $handler, $server] = $this->setupCallbackTest([
+        $job = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_EXCEPTION, ['H:test:1', 'Error'])
         ]);
@@ -179,7 +151,7 @@ class CreateJobHandlerTest extends TestCase {
         $job->onException(function() use (&$failure){
             $failure = true;
         });
-        $server->playback();
+        $this->server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertTrue($failure);
@@ -187,12 +159,7 @@ class CreateJobHandlerTest extends TestCase {
     }
 
     public function testOnlyHandlesOwnJobs(){
-        /**
-         * @var ForegroundJob $job
-         * @var CreateJobHandler $handler
-         * @var PacketPlaybackConnection $server
-         */
-        [$job, $handler, $server] = $this->setupCallbackTest([
+        $job = $this->setupCallbackTest([
             new OutgoingPacket(PacketMagic::RES, PacketType::JOB_CREATED, ['H:test:1'])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_STATUS, ['H:test:1', 1, 10])
             , new OutgoingPacket(PacketMagic::RES, PacketType::WORK_STATUS, ['H:test:2', 9, 10])
@@ -212,7 +179,7 @@ class CreateJobHandlerTest extends TestCase {
             $complete = true;
         });
 
-        $server->playback();
+        $this->server->playback();
 
         $this->assertEquals('H:test:1', $job->getJobHandle());
         $this->assertEquals(2, $counter);
@@ -221,13 +188,13 @@ class CreateJobHandlerTest extends TestCase {
         $this->assertFalse($complete);
     }
 
-    private function setupCallbackTest(array $packetSequence) : array{
+    private function setupCallbackTest(array $packetSequence) : ForegroundJob{
         $data = new ClientJobData('reverse', 'test', '', JobPriority::NORMAL);
         $job = new ForegroundJob($data);
         $handler = new CreateJobHandler($data);
-        $server = new PacketPlaybackConnection($packetSequence);
-        $server->addPacketHandler($handler);
+        $this->server = new PacketPlaybackConnection($packetSequence);
+        $this->server->addPacketHandler($handler);
 
-        return [$job, $handler, $server];
+        return $job;
     }
 }

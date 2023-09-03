@@ -15,13 +15,14 @@ use PHPUnit\Framework\TestCase;
 class JobStatusHandlerTest extends TestCase {
     public function testStatusRequestSent(){
         $server = new PacketPlaybackConnection([
-            new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
+            $packet = new IncomingPacket(PacketMagic::REQ, PacketType::GET_STATUS, ['H:test:1'])
         ]);
 
         $data = new JobStatusData('H:test:1');
         $handler = new JobStatusHandler($data);
         $handler->waitForResult($server);
-        $this->assertTrue($server->playback());
+        $server->playback();
+        $this->assertTrue($server->didReceivePacket($packet));
     }
 
     public function testStatusReceived(){
@@ -38,7 +39,7 @@ class JobStatusHandlerTest extends TestCase {
             $statusReceived = new JobStatus($data);
         });
 
-        $this->assertTrue($server->playback());
+        $server->playback();
 
         $this->assertInstanceOf(JobStatus::class, $statusReceived);
         $this->assertEquals('H:test:1', $statusReceived->getJobHandle());
@@ -62,7 +63,7 @@ class JobStatusHandlerTest extends TestCase {
         $handler->waitForResult($server)->then(function() use (&$statusReceived, $data){
             $statusReceived = new JobStatus($data);
         });
-        $this->assertTrue($server->playback());
+        $server->playback();
 
         $this->assertInstanceOf(JobStatus::class, $statusReceived);
         $this->assertEquals('H:test:1', $statusReceived->getJobHandle());

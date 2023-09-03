@@ -11,6 +11,8 @@ use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
 use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
@@ -20,13 +22,25 @@ class PacketPlaybackConnection implements Endpoint {
     /** @var PacketHandler[] */
     private array $handlerList = [];
     private array $sequence;
+    private LoopInterface $loop;
     private PacketBuffer $writeBuffer;
     private array $options = [];
     private string $clientId = 'playback';
+    private array $receivedPacketList = [];
 
-    public function __construct(array $packetSequence = []){
+    public function __construct(array $packetSequence, LoopInterface $loop = null){
         $this->sequence = $packetSequence;
+        $this->loop = $loop ?? Loop::get();
         $this->writeBuffer = new PacketBuffer();
+        $this->loop->futureTick(\Closure::fromCallable([$this, 'tick']));
+    }
+
+    public function receivedPacket(IncomingPacket $packet){
+
+    }
+
+    public function didReceivePacket(IncomingPacket $packet) : bool{
+        return in_array((string)$packet, $this->receivedPacketList, true);
     }
 
     private function isConnected() : bool{
@@ -45,6 +59,7 @@ class PacketPlaybackConnection implements Endpoint {
         if (!$this->isConnected()){
             throw new NotConnectedException();
         }
+        $this->receivedPacketList[] = (string)$packet;
         $this->writeBuffer->feed($packet);
     }
 
@@ -76,23 +91,8 @@ class PacketPlaybackConnection implements Endpoint {
     public function shutdown() : void{
     }
 
-    public function playback() : bool{
-        while ($packet = array_shift($this->sequence)){
-            if ($packet instanceof OutgoingPacket){
-                $this->emitPacket($packet);
-            } else if ($packet instanceof IncomingPacket){
-                $lastPacketWritten = $this->writeBuffer->readPacket();
-                if (!$lastPacketWritten){
-                    throw new \RuntimeException('No packet written when one was expected.');
-                } else if ((string)$lastPacketWritten !== (string)$packet){
-                    throw $this->unexpectedPacket($lastPacketWritten, $packet);
-                }
-            } else {
-                throw new \RuntimeException('Playback sequence must consist of OutgoingPacket or IncomingPacket elements only.');
-            }
-        }
-
-        return true;
+    public function playback(){
+        $this->loop->run();
     }
 
     public function setClientId(string $clientId){
@@ -107,6 +107,26 @@ class PacketPlaybackConnection implements Endpoint {
         $this->options[] = $option;
 
         return true;
+    }
+
+    private function tick(){
+        $packet = array_shift($this->sequence);
+        if ($packet instanceof OutgoingPacket){
+            $this->emitPacket($packet);
+        } else if ($packet instanceof IncomingPacket){
+            $lastPacketWritten = $this->writeBuffer->readPacket();
+            if (!$lastPacketWritten){
+                throw new \RuntimeException('No packet written when one was expected.');
+            } else if ((string)$lastPacketWritten !== (string)$packet){
+                throw $this->unexpectedPacket($lastPacketWritten, $packet);
+            }
+        } else {
+            throw new \RuntimeException('Playback sequence must consist of OutgoingPacket or IncomingPacket elements only.');
+        }
+
+        if ($this->sequence){
+            $this->loop->futureTick(\Closure::fromCallable([$this, 'tick']));
+        }
     }
 
     private function emitPacket(Packet $packet){
