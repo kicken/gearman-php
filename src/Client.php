@@ -33,6 +33,7 @@ use Kicken\Gearman\Client\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Client\PacketHandler\PingHandler;
 use Kicken\Gearman\Exception\EmptyServerListException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
+use Kicken\Gearman\Exception\WorkerStoppedException;
 use Kicken\Gearman\Job\Data\JobStatusData;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Network\Endpoint;
@@ -307,7 +308,7 @@ class Client {
             throw new NoRegisteredFunctionException;
         }
 
-        while ($job = $this->nextJob()){
+        while (!$this->stopWorking && $job = $this->nextJob()){
             $this->executeJob($job);
         }
     }
@@ -318,7 +319,7 @@ class Client {
      */
     public function nextJobAsync() : PromiseInterface{
         if ($this->stopWorking){
-            return reject(new \GearmanException('Worker stopped'));
+            return reject(new WorkerStoppedException('Worker stopped'));
         }
 
         $this->grabJobHandler ??= new GrabJobHandler($this->logger);

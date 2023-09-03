@@ -24,7 +24,7 @@
 
 namespace Kicken\Gearman\Exception;
 
-class LostConnectionException extends \RuntimeException {
+class LostConnectionException extends \RuntimeException implements GearmanException {
     public function __construct(){
         parent::__construct('Connection lost during operation');
     }

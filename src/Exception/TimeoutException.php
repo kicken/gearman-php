@@ -8,7 +8,7 @@
 
 namespace Kicken\Gearman\Exception;
 
-class TimeoutException extends \RuntimeException {
+class TimeoutException extends \RuntimeException implements GearmanException {
     public function __construct(){
         parent::__construct("Timeout occurred.");
     }

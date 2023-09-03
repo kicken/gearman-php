@@ -26,7 +26,7 @@ namespace Kicken\Gearman\Exception;
 
 use Kicken\Gearman\Network\Endpoint;
 
-class CouldNotConnectException extends \RuntimeException {
+class CouldNotConnectException extends \RuntimeException implements GearmanException {
     private Endpoint $endpoint;
 
     public function __construct(Endpoint $endpoint, ?int $errNo = null, ?string $errStr = null){

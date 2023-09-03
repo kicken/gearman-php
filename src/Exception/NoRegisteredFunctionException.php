@@ -24,7 +24,7 @@
 
 namespace Kicken\Gearman\Exception;
 
-class NoRegisteredFunctionException extends \RuntimeException {
+class NoRegisteredFunctionException extends \RuntimeException implements GearmanException {
     public function __construct(){
         parent::__construct('Function not registered with worker');
     }

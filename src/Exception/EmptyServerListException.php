@@ -25,7 +25,7 @@
 namespace Kicken\Gearman\Exception;
 
 
-class EmptyServerListException extends \RuntimeException {
+class EmptyServerListException extends \RuntimeException implements GearmanException {
     public function __construct(){
         parent::__construct('Empty server list');
     }

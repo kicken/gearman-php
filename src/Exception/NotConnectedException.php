@@ -25,7 +25,7 @@
 namespace Kicken\Gearman\Exception;
 
 
-class NotConnectedException extends \RuntimeException {
+class NotConnectedException extends \RuntimeException implements GearmanException {
     public function __construct(){
         parent::__construct('Not connected to a server.');
     }

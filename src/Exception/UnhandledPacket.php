@@ -4,7 +4,7 @@ namespace Kicken\Gearman\Exception;
 
 use Kicken\Gearman\Protocol\Packet;
 
-class UnhandledPacket extends \RuntimeException {
+class UnhandledPacket extends \RuntimeException implements GearmanException {
     private Packet $packet;
 
     public function __construct(Packet $packet){

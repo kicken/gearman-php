@@ -40,6 +40,6 @@ final class PacketMagic {
             }
         }
 
-        throw new \DomainException('Constant not found.');
+        throw new \UnexpectedValueException('Constant not found.');
     }
 }

@@ -25,7 +25,7 @@
 namespace Kicken\Gearman\Exception;
 
 
-class InsufficientDataException extends \RuntimeException {
+class InsufficientDataException extends \RuntimeException implements GearmanException {
     public function __construct(){
         parent::__construct('Not enough data to parse packet.');
     }
