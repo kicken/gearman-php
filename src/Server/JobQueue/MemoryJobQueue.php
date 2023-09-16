@@ -51,6 +51,7 @@ class MemoryJobQueue implements JobQueue, LoggerAwareInterface {
     public function setComplete(ServerJobData $jobData) : void{
         $count =& $this->runningCount[normalizeFunctionName($jobData->function)];
         $count--;
+        unset($this->handleMap[$jobData->jobHandle]);
     }
 
     public function findByHandle(string $handle) : ?ServerJobData{
