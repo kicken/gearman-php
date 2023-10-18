@@ -2,8 +2,8 @@
 
 namespace Kicken\Gearman\Network;
 
-use Kicken\Gearman\Events\EndpointEvents;
-use Kicken\Gearman\Events\EventEmitter;
+use Kicken\Gearman\Events\ClientConnected;
+use Kicken\Gearman\Events\ClientDisconnected;
 use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
@@ -12,23 +12,15 @@ use Kicken\Gearman\Protocol\Packet;
 use Kicken\Gearman\Protocol\PacketBuffer;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
-use Psr\Log\NullLogger;
-use React\EventLoop\Loop;
-use React\EventLoop\LoopInterface;
+use Kicken\Gearman\ServiceContainer;
 use React\EventLoop\TimerInterface;
 use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
 use function React\Promise\reject;
 use function React\Promise\resolve;
 
-class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
-    use LoggerAwareTrait;
-    use EventEmitter;
-
-    private LoopInterface $loop;
-
+class GearmanEndpoint implements Endpoint {
+    private ServiceContainer $services;
     private string $url;
     private int $connectTimeout;
     private bool $connectedEventTriggered = false;
@@ -46,11 +38,10 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
     private PacketBuffer $readBuffer;
     private array $packetHandlerList = [];
 
-    public function __construct(string $url, int $connectTimeout = null, LoopInterface $loop = null){
+    public function __construct(string $url, int $connectTimeout = null, ServiceContainer $services = null){
         $this->url = $url;
         $this->connectTimeout = $connectTimeout ?? ini_get('default_socket_timeout');
-        $this->loop = $loop ?? Loop::get();
-        $this->logger = new NullLogger();
+        $this->services = $services;
         $this->readBuffer = new PacketBuffer();
         $this->clientId = 'gearman-php-' . bin2hex(random_bytes(8));
     }
@@ -69,11 +60,11 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
         }
 
         $this->connectingDeferred = new Deferred();
-        $this->timeoutTimer = $this->loop->addTimer($this->connectTimeout, function(){
+        $this->timeoutTimer = $this->services->loop->addTimer($this->connectTimeout, function(){
             $this->completeConnectionAttempt();
         });
 
-        $this->loop->addWriteStream($this->stream, function(){
+        $this->services->loop->addWriteStream($this->stream, function(){
             $this->completeConnectionAttempt();
         });
 
@@ -82,8 +73,8 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
 
     public function disconnect() : void{
         if ($this->stream){
-            $this->loop->removeReadStream($this->stream);
-            $this->loop->removeWriteStream($this->stream);
+            $this->services->loop->removeReadStream($this->stream);
+            $this->services->loop->removeWriteStream($this->stream);
             fclose($this->stream);
             $this->stream = null;
             if ($this->connectingDeferred){
@@ -92,11 +83,11 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
                 $this->connectingPromise = null;
             }
             if ($this->timeoutTimer){
-                $this->loop->cancelTimer($this->timeoutTimer);
+                $this->services->loop->cancelTimer($this->timeoutTimer);
                 $this->timeoutTimer = null;
             }
             if ($this->connectedEventTriggered){
-                $this->emit(EndpointEvents::DISCONNECTED, $this);
+                $this->services->eventDispatcher->dispatch(new ClientDisconnected($this));
             }
         }
     }
@@ -115,7 +106,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
             throw new CouldNotConnectException($this, $errNo, $errStr);
         }
 
-        $this->loop->addReadStream($this->stream, function() use ($handler){
+        $this->services->loop->addReadStream($this->stream, function() use ($handler){
             $this->accept($handler);
         });
     }
@@ -130,7 +121,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
         if ($key !== false){
             unset($this->packetHandlerList[$key]);
             if (!$this->packetHandlerList){
-                $this->loop->removeReadStream($this->stream);
+                $this->services->loop->removeReadStream($this->stream);
             }
         }
     }
@@ -143,8 +134,8 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
     }
 
     public function shutdown() : void{
-        $this->loop->removeWriteStream($this->stream);
-        $this->loop->removeReadStream($this->stream);
+        $this->services->loop->removeWriteStream($this->stream);
+        $this->services->loop->removeReadStream($this->stream);
         stream_socket_shutdown($this->stream, STREAM_SHUT_RDWR);
         fclose($this->stream);
         $this->stream = null;
@@ -157,7 +148,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
     }
 
     public function setClientId(string $clientId){
-        $this->logger->info('Setting client ID', ['clientId' => $this->clientId]);
+        $this->services->logger->info('Setting client ID', ['clientId' => $this->clientId]);
         $this->clientId = $clientId;
         $this->updateClientId();
     }
@@ -184,8 +175,8 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
             $this->writeBuffer = '';
         } else {
             $this->writeBuffer = substr($this->writeBuffer, $written);
-            $this->loop->addWriteStream($this->stream, function(){
-                $this->loop->removeWriteStream($this->stream);
+            $this->services->loop->addWriteStream($this->stream, function(){
+                $this->services->loop->removeWriteStream($this->stream);
                 $this->flush();
             });
         }
@@ -196,8 +187,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
         if ($connection){
             stream_set_blocking($connection, false);
             $remote = stream_socket_get_name($connection, true);
-            $endpoint = new self($remote, $this->connectTimeout, $this->loop);
-            $endpoint->setLogger($this->logger);
+            $endpoint = new self($remote, $this->connectTimeout, $this->services);
             $endpoint->remoteIsServer = false;
             $endpoint->stream = $connection;
             $endpoint->setupStream();
@@ -206,23 +196,23 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
     }
 
     private function setupStream() : void{
-        $this->logger->info('Connection established', ['endpoint' => $this->url]);
+        $this->services->logger->info('Connection established', ['endpoint' => $this->url]);
         stream_set_blocking($this->stream, false);
         $this->addReadStream();
-        $this->emit(EndpointEvents::CONNECTED, $this);
+        $this->services->eventDispatcher->dispatch(new ClientConnected($this));
         $this->connectedEventTriggered = true;
     }
 
     private function addReadStream(){
-        $this->loop->addReadStream($this->stream, function(){
+        $this->services->loop->addReadStream($this->stream, function(){
             $this->buffer();
             $this->emitPackets();
         });
     }
 
     private function completeConnectionAttempt() : void{
-        $this->loop->cancelTimer($this->timeoutTimer);
-        $this->loop->removeWriteStream($this->stream);
+        $this->services->loop->cancelTimer($this->timeoutTimer);
+        $this->services->loop->removeWriteStream($this->stream);
         if ($this->isConnected()){
             $this->setupStream();
             $this->updateClientId();
@@ -230,7 +220,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
         } else {
             $this->stream = null;
             $error = new CouldNotConnectException($this);
-            $this->logger->warning($error->getMessage(), ['url' => $this->url]);
+            $this->services->logger->warning($error->getMessage(), ['url' => $this->url]);
             $this->connectingDeferred->reject($error);
         }
         $this->connectingPromise = null;
@@ -261,7 +251,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
                 } while ($handler && !($handled = $handler->handlePacket($this, $packet)));
 
                 if (!$handled){
-                    $this->logger->warning('Unhandled Packet ' . get_class($packet), ['packet' => $this->encodePacket($packet)]);
+                    $this->services->logger->warning('Unhandled Packet ' . get_class($packet), ['packet' => $this->encodePacket($packet)]);
                 }
             }
         } catch (LostConnectionException $ex){
@@ -277,7 +267,7 @@ class GearmanEndpoint implements Endpoint, LoggerAwareInterface {
 
     private function updateClientId(){
         if ($this->remoteIsServer && $this->isConnected()){
-            $this->logger->debug('Sending new client ID to server', ['clientId' => $this->clientId]);
+            $this->services->logger->debug('Sending new client ID to server', ['clientId' => $this->clientId]);
             $packet = new BinaryPacket(PacketMagic::REQ, PacketType::SET_CLIENT_ID, [$this->clientId]);
             $this->writePacket($packet);
         }

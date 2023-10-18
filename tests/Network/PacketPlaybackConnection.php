@@ -2,7 +2,6 @@
 
 namespace Kicken\Gearman\Test\Network;
 
-use Kicken\Gearman\Events\EventEmitter;
 use Kicken\Gearman\Exception\NotConnectedException;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
@@ -17,8 +16,6 @@ use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
 class PacketPlaybackConnection implements Endpoint {
-    use EventEmitter;
-
     /** @var PacketHandler[] */
     private array $handlerList = [];
     private array $sequence;

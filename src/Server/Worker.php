@@ -2,25 +2,27 @@
 
 namespace Kicken\Gearman\Server;
 
-use Kicken\Gearman\Events\EventEmitter;
-use Kicken\Gearman\Events\ServerEvents;
-use Kicken\Gearman\Events\WorkerEvents;
+use Kicken\Gearman\Events\FunctionRegistered;
+use Kicken\Gearman\Events\FunctionUnregistered;
+use Kicken\Gearman\Events\JobStarted;
+use Kicken\Gearman\Events\JobStopped;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Kicken\Gearman\ServiceContainer;
 use function Kicken\Gearman\normalizeFunctionName;
 
 class Worker {
-    use EventEmitter;
-
     private Endpoint $connection;
+    private ServiceContainer $services;
     private array $functionList = [];
     private bool $sleeping = false;
     private ?ServerJobData $currentAssignment = null;
 
-    public function __construct(Endpoint $connection){
+    public function __construct(Endpoint $connection, ServiceContainer $container){
         $this->connection = $connection;
+        $this->services = $container;
     }
 
     public function getConnection() : Endpoint{
@@ -33,12 +35,12 @@ class Worker {
 
     public function registerFunction(string $function, ?int $timeout = null){
         $this->functionList[normalizeFunctionName($function)] = $timeout;
-        $this->emit(WorkerEvents::REGISTERED_FUNCTION, $function);
+        $this->services->eventDispatcher->dispatch(new FunctionRegistered($function));
     }
 
     public function unregisterFunction(string $function){
         unset($this->functionList[normalizeFunctionName($function)]);
-        $this->emit(WorkerEvents::UNREGISTERED_FUNCTION, $function);
+        $this->services->eventDispatcher->dispatch(new FunctionUnregistered($function));
     }
 
     public function isSleeping() : bool{
@@ -60,12 +62,12 @@ class Worker {
 
     public function assignJob(?ServerJobData $jobData){
         if (!$jobData && $this->currentAssignment){
-            $this->emit(ServerEvents::JOB_STOPPED, $this->currentAssignment);
+            $this->services->eventDispatcher->dispatch(new JobStopped($this->currentAssignment));
         }
 
         $this->currentAssignment = $jobData;
         if ($jobData){
-            $this->emit(ServerEvents::JOB_STARTED, $jobData);
+            $this->services->eventDispatcher->dispatch(new JobStarted($jobData));
         }
     }
 

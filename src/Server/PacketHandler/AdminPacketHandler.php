@@ -8,17 +8,18 @@ use Kicken\Gearman\Protocol\AdministrativeCommandPacket;
 use Kicken\Gearman\Protocol\AdministrativePacket;
 use Kicken\Gearman\Server;
 use Kicken\Gearman\Server\Statistics;
+use Kicken\Gearman\ServiceContainer;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
 class AdminPacketHandler extends AdministrativePacketHandler {
     private Server $server;
     private LoggerInterface $logger;
-    private Statistics $statistics;
+    private ServiceContainer $services;
 
-    public function __construct(Server $server, Statistics $statistics, ?LoggerInterface $logger = null){
+    public function __construct(Server $server, ServiceContainer $container){
         $this->logger = $logger ?? new NullLogger();
-        $this->statistics = $statistics;
+        $this->services = $container;
         $this->server = $server;
     }
 
@@ -30,7 +31,7 @@ class AdminPacketHandler extends AdministrativePacketHandler {
         switch ($packet->getCommand()){
             case 'workers':
                 $this->logger->info('Handling workers admin command.');
-                $connection->writePacket(new AdministrativePacket($this->statistics->listWorkerDetails()));
+                $connection->writePacket(new AdministrativePacket($this->statistics()->listWorkerDetails()));
                 break;
             case 'version':
                 $this->logger->info('Handling version admin command.');
@@ -38,7 +39,7 @@ class AdminPacketHandler extends AdministrativePacketHandler {
                 break;
             case 'status':
                 $this->logger->info('Handling status admin commend.');
-                $connection->writePacket(new AdministrativePacket($this->statistics->listQueueDetails()));
+                $connection->writePacket(new AdministrativePacket($this->statistics()->listQueueDetails()));
                 break;
             case 'shutdown':
                 $this->logger->info('Handling shutdown admin command.');
@@ -50,5 +51,9 @@ class AdminPacketHandler extends AdministrativePacketHandler {
         }
 
         return true;
+    }
+
+    private function statistics() : Statistics{
+        return $this->services->statistics;
     }
 }

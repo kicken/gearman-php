@@ -2,29 +2,30 @@
 
 namespace Kicken\Gearman\Server;
 
-use Kicken\Gearman\Server\JobQueue\JobQueue;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
-use Psr\Log\LoggerInterface;
+use Kicken\Gearman\Events\WorkerConnected;
+use Kicken\Gearman\Events\WorkerDisconnected;
+use Kicken\Gearman\ServiceContainer;
 
-class Statistics implements LoggerAwareInterface {
-    use LoggerAwareTrait;
-
-    private JobQueue $jobQueue;
-    private WorkerManager $workerManager;
-
+class Statistics {
+    private ServiceContainer $services;
     private array $workerList = [];
     private array $functionQueueStats = [];
 
-    public function __construct(WorkerManager $registry, JobQueue $jobQueue, LoggerInterface $logger){
-        $this->logger = $logger;
-        $this->jobQueue = $jobQueue;
-        $this->workerManager = $registry;
+    public function __construct(ServiceContainer $container){
+        $this->services = $container;
+        $dispatcher = $container->eventDispatcher;
+        $dispatcher->addListener(WorkerConnected::class, function(WorkerConnected $event){
+            $this->workerList[] = \WeakReference::create($event->worker);
+        });
+        $dispatcher->addListener(WorkerDisconnected::class, function(WorkerDisconnected $event){
+            $key = array_search($event->worker, $this->workerList, true);
+            unset($this->workerList[$key]);
+        });
     }
 
     public function listWorkerDetails() : string{
         $list = [];
-        foreach ($this->workerManager->getAllWorkers() as $worker){
+        foreach ($this->services->workerManager->getAllWorkers() as $worker){
             $list[] = sprintf('%d %s %s: %s'
                 , $worker->getConnection()->getFd()
                 , $worker->getConnection()->getAddress()
@@ -38,12 +39,12 @@ class Statistics implements LoggerAwareInterface {
 
     public function listQueueDetails() : string{
         $list = [];
-        foreach ($this->jobQueue->getFunctionList() as $function){
+        foreach ($this->services->jobQueue->getFunctionList() as $function){
             $list[] = sprintf("%s\t%d\t%d\t%d",
                 $function,
-                $this->jobQueue->getTotalJobs($function),
-                $this->jobQueue->getTotalRunning($function),
-                $this->workerManager->getCapableWorkerCount($function)
+                $this->services->jobQueue->getTotalJobs($function),
+                $this->services->jobQueue->getTotalRunning($function),
+                $this->services->workerManager->getCapableWorkerCount($function)
             );
         }
 

@@ -2,25 +2,34 @@
 
 namespace Kicken\Gearman\Worker;
 
-use Kicken\Gearman\Events\EventEmitter;
-use Kicken\Gearman\Events\WorkerEvents;
+use Kicken\Gearman\Events\FunctionRegistered;
+use Kicken\Gearman\Events\FunctionUnregistered;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
+use Kicken\Gearman\ServiceContainer;
 
-class FunctionRegistry {
-    use EventEmitter;
+class FunctionRegistry implements \Countable {
+    private ServiceContainer $services;
 
     /** @var WorkerFunction[] */
     private array $functionList = [];
 
+    public function __construct(ServiceContainer $container){
+        $this->services = $container;
+    }
+
+    public function count() : int{
+        return count($this->functionList);
+    }
+
     public function register(WorkerFunction $fn){
         $this->functionList[$this->normalize($fn->name)] = $fn;
-        $this->emit(WorkerEvents::REGISTERED_FUNCTION, $fn);
+        $this->services->eventDispatcher->dispatch(new FunctionRegistered($fn->name));
     }
 
     public function unregister(WorkerFunction $fn){
         unset($this->functionList[$this->normalize($fn->name)]);
-        $this->emit(WorkerEvents::UNREGISTERED_FUNCTION, $fn);
+        $this->services->eventDispatcher->dispatch(new FunctionUnregistered($fn->name));
     }
 
     public function isRegistered(string $fn) : bool{

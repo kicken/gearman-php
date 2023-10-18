@@ -19,8 +19,6 @@ interface Endpoint {
 
     public function shutdown() : void;
 
-    public function on(string $event, callable $callback) : void;
-
     public function writePacket(Packet $packet) : void;
 
     public function addPacketHandler(PacketHandler $handler) : void;

@@ -8,6 +8,8 @@ use Kicken\Gearman\Server\Worker;
 interface JobQueue {
     public function enqueue(ServerJobData $jobData) : void;
 
+    public function requeue(ServerJobData $jobData) : void;
+
     public function dequeue(array $functionList) : ?ServerJobData;
 
     public function setRunning(ServerJobData $jobData) : void;

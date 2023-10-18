@@ -2,28 +2,23 @@
 
 namespace Kicken\Gearman\Server;
 
-use Kicken\Gearman\Events\EventEmitter;
-use Kicken\Gearman\Events\ServerEvents;
+use Kicken\Gearman\Events\JobSubmitted;
+use Kicken\Gearman\Events\WorkerConnected;
+use Kicken\Gearman\Events\WorkerDisconnected;
 use Kicken\Gearman\Network\Endpoint;
+use Kicken\Gearman\ServiceContainer;
 
 class WorkerManager {
-    use EventEmitter;
-
+    private ServiceContainer $services;
     /** @var \SplObjectStorage */
     private \SplObjectStorage $registry;
 
-    public function __construct(){
+    public function __construct(ServiceContainer $container){
         $this->registry = new \SplObjectStorage();
-    }
-
-    public function wakeAllCandidates(ServerJobData $jobData) : void{
-        /** @var Endpoint $connection */
-        foreach ($this->registry as $connection){
-            $worker = $this->getWorker($connection);
-            if ($worker->isSleeping() && $worker->canDo($jobData->function)){
-                $worker->wake();
-            }
-        }
+        $this->services = $container;
+        $this->services->eventDispatcher->addListener(JobSubmitted::class, function(JobSubmitted $event){
+            $this->wakeAllCandidates($event->getJob());
+        });
     }
 
     public function getAllWorkers() : array{
@@ -37,8 +32,8 @@ class WorkerManager {
 
     public function getWorker(Endpoint $connection) : Worker{
         if (!$this->registry->contains($connection)){
-            $this->registry->attach($connection, $worker = new Worker($connection));
-            $this->emit(ServerEvents::WORKER_CONNECTED, $worker);
+            $this->registry->attach($connection, $worker = new Worker($connection, $this->services));
+            $this->services->eventDispatcher->dispatch(new WorkerConnected($worker));
         }
 
         return $this->registry[$connection];
@@ -47,7 +42,7 @@ class WorkerManager {
     public function removeConnection(Endpoint $connection){
         $worker = $this->getWorker($connection);
         $this->registry->detach($connection);
-        $this->emit(ServerEvents::WORKER_DISCONNECTED, $worker);
+        $this->services->eventDispatcher->dispatch(new WorkerDisconnected($worker));
     }
 
     public function disconnectAll() : void{
@@ -80,6 +75,16 @@ class WorkerManager {
             if (!$filter || call_user_func($filter, $this->getWorker($connection))){
                 $connection->disconnect();
                 $this->removeConnection($connection);
+            }
+        }
+    }
+
+    private function wakeAllCandidates(ServerJobData $jobData) : void{
+        /** @var Endpoint $connection */
+        foreach ($this->registry as $connection){
+            $worker = $this->getWorker($connection);
+            if ($worker->isSleeping() && $worker->canDo($jobData->function)){
+                $worker->wake();
             }
         }
     }

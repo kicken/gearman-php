@@ -41,15 +41,12 @@ use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
-use Kicken\Gearman\Worker\FunctionRegistry;
 use Kicken\Gearman\Worker\PacketHandler\GrabJobHandler;
 use Kicken\Gearman\Worker\SleepHandler;
 use Kicken\Gearman\Worker\WorkerFunction;
 use Kicken\Gearman\Worker\WorkerJob;
 use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Promise\Deferred;
@@ -63,14 +60,10 @@ use function React\Promise\reject;
  *
  * @package Kicken\Gearman
  */
-class Client {
-    use LoggerAwareTrait {
-        LoggerAwareTrait::setLogger as originalSetLogger;
-    }
-
+class Client implements LoggerAwareInterface {
     /** @var Endpoint[] */
     private array $serverList;
-    private FunctionRegistry $functionList;
+    private ServiceContainer $services;
     private bool $stopWorking = false;
 
     private LoopInterface $loop;
@@ -82,11 +75,10 @@ class Client {
      *
      * @param string|string[]|Endpoint|Endpoint[] $serverList The server(s) to connect to.
      */
-    public function __construct($serverList = '127.0.0.1:4730', LoopInterface $loop = null){
+    public function __construct($serverList = '127.0.0.1:4730', ServiceContainer $services = null, LoopInterface $loop = null){
         $this->loop = $loop ?? Loop::get();
-        $this->serverList = mapToEndpointObjects($serverList, $this->loop);
-        $this->functionList = new FunctionRegistry();
-        $this->logger = new NullLogger();
+        $this->services = $services ?? new ServiceContainer();
+        $this->serverList = mapToEndpointObjects($serverList, $this->services);
     }
 
     /**
@@ -102,16 +94,9 @@ class Client {
 
     /**
      * Set a logger
-     *
-     * @param LoggerInterface $logger
      */
     public function setLogger(LoggerInterface $logger) : void{
-        $this->originalSetLogger($logger);
-        foreach ($this->serverList as $server){
-            if ($server instanceof LoggerAwareInterface){
-                $server->setLogger($this->logger);
-            }
-        }
+        $this->services->logger = $logger;
     }
 
     /**
@@ -119,7 +104,7 @@ class Client {
      */
     public function pingServerAsync() : PromiseInterface{
         return $this->connect()->then(function(Endpoint $connection){
-            return (new PingHandler($this->logger))->ping($connection);
+            return (new PingHandler($this->services->logger))->ping($connection);
         });
     }
 
@@ -166,24 +151,24 @@ class Client {
     public function submitJob(string $function, string $workload, int $priority = JobPriority::NORMAL, string $unique = '') : ?string{
         $promise = $this->submitJobAsync($function, $workload, $priority, $unique);
         $promise = $promise->then(function(ForegroundJob $job){
-            $this->logger->debug('Job created with handle', ['handle' => $job->getJobHandle()]);
+            $this->services->logger->debug('Job created with handle', ['handle' => $job->getJobHandle()]);
             $deferred = new Deferred();
             $job->onComplete(function(ForegroundJob $job) use ($deferred){
-                $this->logger->debug('Job complete event', ['handle' => $job->getJobHandle()]);
+                $this->services->logger->debug('Job complete event', ['handle' => $job->getJobHandle()]);
                 $deferred->resolve($job);
             });
             $job->onFail(function(ForegroundJob $job) use ($deferred){
-                $this->logger->debug('Job fail event', ['handle' => $job->getJobHandle()]);
+                $this->services->logger->debug('Job fail event', ['handle' => $job->getJobHandle()]);
                 $deferred->reject($job);
             });
             $job->onException(function(ForegroundJob $job) use ($deferred){
-                $this->logger->debug('Job exception event', ['handle' => $job->getJobHandle()]);
+                $this->services->logger->debug('Job exception event', ['handle' => $job->getJobHandle()]);
                 $deferred->reject($job);
             });
 
             return $deferred->promise();
         })->then(function(ForegroundJob $job){
-            $this->logger->debug('Returning final job result.', ['handle' => $job->getJobHandle()]);
+            $this->services->logger->debug('Returning final job result.', ['handle' => $job->getJobHandle()]);
 
             return $job->getResult();
         });
@@ -247,7 +232,7 @@ class Client {
         $data = new JobStatusData($handle);
 
         return $this->connect()->then(function(Endpoint $server) use ($data){
-            return (new JobStatusHandler($data, $this->logger))->waitForResult($server);
+            return (new JobStatusHandler($data, $this->services->logger))->waitForResult($server);
         })->then(function() use ($data){
             return new JobStatus($data);
         });
@@ -285,7 +270,7 @@ class Client {
      * @param int|null $timeout A time limit on how the server should wait for a response.
      */
     public function registerFunction(string $name, callable $callback, int $timeout = null) : self{
-        $this->functionList->register(new WorkerFunction($name, $callback, $timeout));
+        $this->services->functionRegistry->register(new WorkerFunction($name, $callback, $timeout));
         if ($timeout === null){
             $packet = new BinaryPacket(PacketMagic::REQ, PacketType::CAN_DO, [$name]);
         } else {
@@ -305,7 +290,7 @@ class Client {
      * Go into a loop accepting jobs and performing the work.
      */
     public function work() : void{
-        if (empty($this->functionList)){
+        if (!count($this->services->functionRegistry)){
             throw new NoRegisteredFunctionException;
         }
 
@@ -323,8 +308,8 @@ class Client {
             return reject(new WorkerStoppedException('Worker stopped'));
         }
 
-        $this->grabJobHandler ??= new GrabJobHandler($this->logger);
-        $this->sleepHandler ??= new SleepHandler($this->logger);
+        $this->grabJobHandler ??= new GrabJobHandler($this->services->logger);
+        $this->sleepHandler ??= new SleepHandler($this->services->logger);
 
         return $this->connect(true)->then(function(array $serverList){
             return $this->grabNextJob($serverList);
@@ -348,7 +333,7 @@ class Client {
      * @return void
      */
     public function executeJob(WorkerJob $job) : void{
-        $this->functionList->run($job);
+        $this->services->functionRegistry->run($job);
     }
 
     /**
@@ -359,7 +344,7 @@ class Client {
     }
 
     private function createJob(Endpoint $server, ClientJobData $jobDetails) : PromiseInterface{
-        return (new CreateJobHandler($jobDetails, $this->logger))->createJob($server);
+        return (new CreateJobHandler($jobDetails, $this->services->logger))->createJob($server);
     }
 
     private function connect(bool $all = false) : PromiseInterface{

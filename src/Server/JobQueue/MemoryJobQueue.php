@@ -36,6 +36,12 @@ class MemoryJobQueue implements JobQueue, LoggerAwareInterface {
         $this->handleMap[$jobData->jobHandle] = $jobData;
     }
 
+    public function requeue(ServerJobData $jobData) : void{
+        $this->enqueue($jobData);
+        $count = &$this->runningCount[normalizeFunctionName($jobData->function)];
+        $count--;
+    }
+
     public function dequeue(array $functionList) : ?ServerJobData{
         $queueList = $this->findNonEmptyQueues($functionList);
         $queue = PriorityQueue::findHighestPriorityQueue($queueList);
