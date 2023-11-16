@@ -384,6 +384,8 @@ class Client {
                 if (empty($connectedEndpoints)){
                     throw new CouldNotConnectException();
                 }
+
+                return $connectedEndpoints;
             });
         } else {
             return any($promiseList)->then(function(Endpoint $endpoint){
