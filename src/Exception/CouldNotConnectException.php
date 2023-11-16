@@ -29,7 +29,7 @@ use Kicken\Gearman\Network\Endpoint;
 class CouldNotConnectException extends \RuntimeException implements GearmanException {
     private Endpoint $endpoint;
 
-    public function __construct(Endpoint $endpoint, ?int $errNo = null, ?string $errStr = null){
+    public function __construct(?Endpoint $endpoint = null, ?int $errNo = null, ?string $errStr = null){
         if ($errNo !== null){
             $message = sprintf('[%d] %s', $errNo, $errStr);
         } else {

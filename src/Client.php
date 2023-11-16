@@ -31,6 +31,7 @@ use Kicken\Gearman\Client\JobStatus;
 use Kicken\Gearman\Client\PacketHandler\CreateJobHandler;
 use Kicken\Gearman\Client\PacketHandler\JobStatusHandler;
 use Kicken\Gearman\Client\PacketHandler\PingHandler;
+use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Exception\EmptyServerListException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\Exception\WorkerStoppedException;
@@ -379,7 +380,10 @@ class Client {
 
         if ($all){
             return all($promiseList)->then(function(array $connectedEndpoints){
-                return array_filter($connectedEndpoints);
+                $connectedEndpoints = array_filter($connectedEndpoints);
+                if (empty($connectedEndpoints)){
+                    throw new CouldNotConnectException();
+                }
             });
         } else {
             return any($promiseList)->then(function(Endpoint $endpoint){
