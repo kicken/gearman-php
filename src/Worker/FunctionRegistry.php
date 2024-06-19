@@ -7,13 +7,9 @@ use Kicken\Gearman\Events\FunctionUnregistered;
 use Kicken\Gearman\Exception\LostConnectionException;
 use Kicken\Gearman\Exception\NoRegisteredFunctionException;
 use Kicken\Gearman\ServiceContainer;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LogLevel;
 
-class FunctionRegistry implements \Countable, LoggerAwareInterface {
-    use LoggerAwareTrait;
-
+class FunctionRegistry implements \Countable {
     private ServiceContainer $services;
 
     /** @var WorkerFunction[] */
@@ -84,8 +80,6 @@ class FunctionRegistry implements \Countable, LoggerAwareInterface {
     }
 
     private function log(string $level, string $message, array $params = []) : void{
-        if ($this->logger){
-            $this->logger->log($level, $message, $params);
-        }
+        $this->services->logger->log($level, $message, $params);
     }
 }
