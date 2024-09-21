@@ -21,7 +21,6 @@ class PacketPlaybackConnection implements Endpoint {
     private array $sequence;
     private LoopInterface $loop;
     private PacketBuffer $writeBuffer;
-    private array $options = [];
     private string $clientId = 'playback';
     private array $receivedPacketList = [];
 
@@ -30,10 +29,6 @@ class PacketPlaybackConnection implements Endpoint {
         $this->loop = $loop ?? Loop::get();
         $this->writeBuffer = new PacketBuffer();
         $this->loop->futureTick(\Closure::fromCallable([$this, 'tick']));
-    }
-
-    public function receivedPacket(IncomingPacket $packet){
-
     }
 
     public function didReceivePacket(IncomingPacket $packet) : bool{
@@ -101,8 +96,6 @@ class PacketPlaybackConnection implements Endpoint {
     }
 
     public function setOption(string $option) : bool{
-        $this->options[] = $option;
-
         return true;
     }
 

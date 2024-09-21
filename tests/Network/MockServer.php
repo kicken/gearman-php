@@ -26,9 +26,10 @@ class MockServer {
         }
 
         $this->loop->addReadStream($this->serverStream, function(){
-            $buffer = new PacketBuffer();
             $this->client = stream_socket_accept($this->serverStream);
-            $this->loop->addReadStream($this->client, function() use ($buffer){
+            $this->shutdownServer();
+            $this->loop->addReadStream($this->client, function(){
+                $buffer = new PacketBuffer();
                 $buffer->feed(fread($this->client, 1024));
                 while ($packet = $buffer->readPacket()){
                     $this->packetList[] = $packet;
@@ -44,14 +45,7 @@ class MockServer {
 
     public function shutdown() : void{
         $this->disconnectClient();
-        if (!$this->serverStream){
-            return;
-        }
-
-        stream_socket_shutdown($this->serverStream, STREAM_SHUT_RDWR);
-        fclose($this->serverStream);
-        $this->loop->removeReadStream($this->serverStream);
-        $this->serverStream = null;
+        $this->shutdownServer();
         $this->client = null;
         $this->packetList = [];
     }
@@ -82,5 +76,16 @@ class MockServer {
         fclose($this->client);
         $this->loop->removeReadStream($this->client);
         $this->client = null;
+    }
+
+    private function shutdownServer(){
+        if (!$this->serverStream){
+            return;
+        }
+
+        stream_socket_shutdown($this->serverStream, STREAM_SHUT_RDWR);
+        fclose($this->serverStream);
+        $this->loop->removeReadStream($this->serverStream);
+        $this->serverStream = null;
     }
 }

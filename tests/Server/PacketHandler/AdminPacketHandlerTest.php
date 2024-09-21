@@ -7,6 +7,7 @@ use Kicken\Gearman\Protocol\AdministrativeCommandPacket;
 use Kicken\Gearman\Protocol\AdministrativePacket;
 use Kicken\Gearman\Server;
 use Kicken\Gearman\Server\PacketHandler\AdminPacketHandler;
+use Kicken\Gearman\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 
 class AdminPacketHandlerTest extends TestCase {
@@ -18,7 +19,10 @@ class AdminPacketHandlerTest extends TestCase {
         $this->server = $this->createMock(Server::class);
         $statistics = $this->createMock(Server\Statistics::class);
 
-        $this->handler = new AdminPacketHandler($this->server, $statistics);
+        $services = new ServiceContainer();
+        $services->statistics = $statistics;
+
+        $this->handler = new AdminPacketHandler($this->server, $services);
         $this->connection = $this->getMockBuilder(Endpoint::class)->getMock();
     }
 

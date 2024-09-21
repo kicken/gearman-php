@@ -4,12 +4,28 @@ namespace Kicken\Gearman\Test\Network;
 
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\PacketHandler\PacketHandler;
+use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\Packet;
 use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
 class MockEndpoint implements Endpoint {
+    /**
+     * @var array<BinaryPacket>
+     */
     private array $writtenPackets = [];
+
+    public function wasPacketWritten(string $magic, int $type, ?array $arguments = null) : bool{
+        foreach ($this->writtenPackets as $packet){
+            if ($packet->getMagic() === $magic && $packet->getType() === $type){
+                if ($arguments === null || $packet->getArgumentList() === $arguments){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 
     public function connect() : PromiseInterface{
         return resolve($this);

@@ -2,18 +2,24 @@
 
 namespace Kicken\Gearman\Test\Server;
 
+use Kicken\Gearman\Events\JobSubmitted;
 use Kicken\Gearman\Job\JobPriority;
 use Kicken\Gearman\Server\ServerJobData;
 use Kicken\Gearman\Server\Worker;
 use Kicken\Gearman\Server\WorkerManager;
+use Kicken\Gearman\ServiceContainer;
+use Kicken\Gearman\Test\MockDispatcher;
 use Kicken\Gearman\Test\Network\MockEndpoint;
 use PHPUnit\Framework\TestCase;
 
 class WorkerManagerTest extends TestCase {
     private WorkerManager $manager;
+    private MockDispatcher $dispatcher;
 
     public function setUp() : void{
-        $this->manager = new WorkerManager();
+        $services = new ServiceContainer();
+        $services->eventDispatcher = $this->dispatcher = new MockDispatcher();
+        $this->manager = new WorkerManager($services);
     }
 
     public function testGetWorkerAddsWorker(){
@@ -22,10 +28,14 @@ class WorkerManagerTest extends TestCase {
         $this->assertCount(1, $this->manager->getAllWorkers());
     }
 
-    public function testWakesAllCandidates(){
+    public function testWakesAllCandidatesWhenJobSubmitted(){
         $jobData = $this->createTestJob();
         $workers = $this->addWorkers(4);
-        $this->manager->wakeAllCandidates($jobData);
+        foreach ($workers as $worker){
+            $this->assertTrue($worker->isSleeping());
+        }
+
+        $this->dispatcher->dispatch(new JobSubmitted($jobData));
         foreach ($workers as $worker){
             $this->assertFalse($worker->isSleeping());
         }
@@ -35,12 +45,16 @@ class WorkerManagerTest extends TestCase {
         $jobData = $this->createTestJob();
         $eligibleWorkers = $this->addWorkers(4);
         $ineligibleWorkers = $this->addWorkers(4, ['other-test']);
-        $this->manager->wakeAllCandidates($jobData);
-        foreach ($eligibleWorkers as $worker){
-            $this->assertFalse($worker->isSleeping());
+        foreach ([...$eligibleWorkers, ...$ineligibleWorkers] as $worker){
+            $this->assertTrue($worker->isSleeping());
         }
+
+        $this->dispatcher->dispatch(new JobSubmitted($jobData));
         foreach ($ineligibleWorkers as $worker){
             $this->assertTrue($worker->isSleeping());
+        }
+        foreach ($eligibleWorkers as $worker){
+            $this->assertFalse($worker->isSleeping());
         }
     }
 
@@ -60,10 +74,13 @@ class WorkerManagerTest extends TestCase {
     }
 
     public function testDisconnectSleeping(){
-        $this->addWorkers(2);
+        $awakeWorkers = $this->addWorkers(2);
+        foreach ($awakeWorkers as $worker){
+            $worker->wake();
+        }
+
         $this->addWorkers(2, ['other-test']);
         $this->assertCount(4, $this->manager->getAllWorkers());
-        $this->manager->wakeAllCandidates($this->createTestJob());
         $this->manager->disconnectSleeping();
         $this->assertCount(2, $this->manager->getAllWorkers());
     }

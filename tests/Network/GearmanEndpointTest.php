@@ -2,7 +2,8 @@
 
 namespace Kicken\Gearman\Test\Network;
 
-use Kicken\Gearman\Events\EndpointEvents;
+use Kicken\Gearman\Events\ClientConnected;
+use Kicken\Gearman\Events\ClientDisconnected;
 use Kicken\Gearman\Exception\CouldNotConnectException;
 use Kicken\Gearman\Network\Endpoint;
 use Kicken\Gearman\Network\GearmanEndpoint;
@@ -10,6 +11,8 @@ use Kicken\Gearman\Network\PacketHandler\PacketHandler;
 use Kicken\Gearman\Protocol\BinaryPacket;
 use Kicken\Gearman\Protocol\PacketMagic;
 use Kicken\Gearman\Protocol\PacketType;
+use Kicken\Gearman\ServiceContainer;
+use Kicken\Gearman\Test\MockDispatcher;
 use PHPUnit\Framework\TestCase;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
@@ -17,20 +20,28 @@ use React\EventLoop\LoopInterface;
 class GearmanEndpointTest extends TestCase {
     private LoopInterface $loop;
     private MockServer $mockServer;
+    private MockDispatcher $mockDispatcher;
     private GearmanEndpoint $endpoint;
 
     protected function setUp() : void{
         $this->loop = Loop::get();
         $this->mockServer = new MockServer($this->loop);
-        $this->endpoint = new GearmanEndpoint($this->mockServer->listen(), null, $this->loop);
+        $this->mockDispatcher = new MockDispatcher();
+        $services = new ServiceContainer();
+        $services->loop = $this->loop;
+        $services->eventDispatcher = $this->mockDispatcher;
+        $this->endpoint = new GearmanEndpoint($this->mockServer->listen(), null, $services);
+    }
+
+    protected function tearDown() : void{
+        $this->mockServer->shutdown();
     }
 
     public function testConnectSuccess(){
         $success = false;
-        $this->endpoint->connect(true)->then(function($endpoint) use (&$success){
+        $this->endpoint->connect()->then(function($endpoint) use (&$success){
             $this->assertInstanceOf(Endpoint::class, $endpoint);
             $endpoint->disconnect();
-            $this->mockServer->shutdown();
             $success = true;
         }, function(){
             $this->fail('Connect rejected handler should not be called.');
@@ -54,26 +65,17 @@ class GearmanEndpointTest extends TestCase {
     }
 
     public function testConnectDisconnectEventEmitted(){
-        $successConnect = $successDisconnect = false;
-        $this->endpoint->on(EndpointEvents::CONNECTED, function($endpoint) use (&$successConnect){
-            $this->assertInstanceOf(Endpoint::class, $endpoint);
-            $successConnect = true;
-        });
-        $this->endpoint->on(EndpointEvents::DISCONNECTED, function($endpoint) use (&$successDisconnect){
-            $this->assertInstanceOf(Endpoint::class, $endpoint);
-            $successDisconnect = true;
-        });
-        $this->endpoint->connect(true)->then(function(){
+        $this->endpoint->connect()->then(function(){
             $this->endpoint->disconnect();
             $this->mockServer->shutdown();
         });
         $this->loop->run();
-        $this->assertTrue($successConnect);
-        $this->assertTrue($successDisconnect);
+        $this->assertTrue($this->mockDispatcher->wasDispatched(ClientConnected::class));
+        $this->assertTrue($this->mockDispatcher->wasDispatched(ClientDisconnected::class));
     }
 
     public function testWritePacket(){
-        $this->endpoint->connect(true)->then(function(Endpoint $endpoint){
+        $this->endpoint->connect()->then(function(Endpoint $endpoint){
             $packet = new BinaryPacket(PacketMagic::REQ, PacketType::ECHO_REQ, [time()]);
             $endpoint->writePacket($packet);
             $this->loop->addTimer(0.1, function() use ($packet){
@@ -86,7 +88,7 @@ class GearmanEndpointTest extends TestCase {
     }
 
     public function testEmitReceivedPacket(){
-        $this->endpoint->connect(true)->then(function(){
+        $this->endpoint->connect()->then(function(){
             $packet = new BinaryPacket(PacketMagic::REQ, PacketType::ECHO_REQ, [time()]);
 
             $handler = $this->createMock(PacketHandler::class);

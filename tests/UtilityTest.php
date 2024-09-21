@@ -3,6 +3,7 @@
 namespace Kicken\Gearman\Test;
 
 use Kicken\Gearman\Network\GearmanEndpoint;
+use Kicken\Gearman\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 use function Kicken\Gearman\fromBigEndian;
 use function Kicken\Gearman\mapToEndpointObjects;
@@ -23,15 +24,16 @@ class UtilityTest extends TestCase {
 
     public function testMapStringArrayToServerArray(){
         $serverList = ['127.0.0.1:4730'];
-        $mapped = mapToEndpointObjects($serverList, null);
+        $mapped = mapToEndpointObjects($serverList, new ServiceContainer());
 
         $this->assertCount(1, $mapped);
         $this->assertInstanceOf(GearmanEndpoint::class, $mapped[0]);
     }
 
     public function testMapServerArrayToServerArray(){
-        $serverList = [new GearmanEndpoint('127.0.0.1:4730')];
-        $mapped = mapToEndpointObjects($serverList, null);
+        $serviceContainer = new ServiceContainer();
+        $serverList = [new GearmanEndpoint('127.0.0.1:4730', null, $serviceContainer)];
+        $mapped = mapToEndpointObjects($serverList, $serviceContainer);
 
         $this->assertCount(1, $mapped);
         $this->assertInstanceOf(GearmanEndpoint::class, $mapped[0]);
@@ -41,6 +43,6 @@ class UtilityTest extends TestCase {
         $serverList = [null];
 
         $this->expectException(\InvalidArgumentException::class);
-        mapToEndpointObjects($serverList, null);
+        mapToEndpointObjects($serverList, new ServiceContainer());
     }
 }

@@ -213,19 +213,22 @@ class GearmanEndpoint implements Endpoint {
     private function completeConnectionAttempt() : void{
         $this->services->loop->cancelTimer($this->timeoutTimer);
         $this->services->loop->removeWriteStream($this->stream);
+
+        $deferred = $this->connectingDeferred;
+        $this->connectingDeferred = null;
+        $this->connectingPromise = null;
+        $this->timeoutTimer = null;
+
         if ($this->isConnected()){
             $this->setupStream();
             $this->updateClientId();
-            $this->connectingDeferred->resolve($this);
+            $deferred->resolve($this);
         } else {
             $this->stream = null;
             $error = new CouldNotConnectException($this);
             $this->services->logger->warning($error->getMessage(), ['url' => $this->url]);
-            $this->connectingDeferred->reject($error);
+            $deferred->reject($error);
         }
-        $this->connectingPromise = null;
-        $this->connectingDeferred = null;
-        $this->timeoutTimer = null;
     }
 
     private function buffer() : void{
