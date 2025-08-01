@@ -17,6 +17,6 @@ class DefaultEventDispatcher implements EventService {
     }
 
     public function dispatch(object $event) : object{
-        $this->dispatcher->dispatch($event);
+        return $this->dispatcher->dispatch($event);
     }
 }
