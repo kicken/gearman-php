@@ -41,10 +41,8 @@ class Server implements LoggerAwareInterface {
     /**
      * Set a logger.
      */
-    public function setLogger(LoggerInterface $logger) : self{
+    public function setLogger(LoggerInterface $logger) : void{
         $this->services->logger = $logger;
-
-        return $this;
     }
 
     /**
