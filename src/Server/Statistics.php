@@ -9,7 +9,6 @@ use Kicken\Gearman\ServiceContainer;
 class Statistics {
     private ServiceContainer $services;
     private array $workerList = [];
-    private array $functionQueueStats = [];
 
     public function __construct(ServiceContainer $container){
         $this->services = $container;

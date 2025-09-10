@@ -10,7 +10,7 @@ use Kicken\Gearman\ServiceContainer;
 
 class WorkerManager {
     private ServiceContainer $services;
-    /** @var \SplObjectStorage */
+    /** @var \SplObjectStorage<Endpoint, Worker> */
     private \SplObjectStorage $registry;
 
     public function __construct(ServiceContainer $container){

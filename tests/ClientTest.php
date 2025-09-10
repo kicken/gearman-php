@@ -11,7 +11,6 @@ use Kicken\Gearman\Test\Network\OutgoingPacket;
 use Kicken\Gearman\Test\Network\PacketPlaybackConnection;
 use PHPUnit\Framework\TestCase;
 use React\EventLoop\Loop;
-use React\Promise\PromiseInterface;
 
 class ClientTest extends TestCase {
     public function testSubmitForegroundJobSync(){
@@ -36,7 +35,6 @@ class ClientTest extends TestCase {
         ]));
 
         $result = $client->submitJobAsync('reverse', 'test');
-        $this->assertInstanceOf(PromiseInterface::class, $result);
         $callables = $this->getMockBuilder(\stdClass::class)->addMethods(['fulfilled', 'rejected'])->getMock();
         $callables->expects($this->once())->method('fulfilled')->with($this->isInstanceOf(Client\ForegroundJob::class));
         $callables->expects($this->never())->method('rejected');
@@ -63,7 +61,6 @@ class ClientTest extends TestCase {
         ]));
 
         $result = $client->submitBackgroundJobAsync('reverse', 'test');
-        $this->assertInstanceOf(PromiseInterface::class, $result);
 
         $callables = $this->getMockBuilder(\stdClass::class)->addMethods(['fulfilled', 'rejected'])->getMock();
         $callables->expects($this->once())->method('fulfilled')->with($this->isInstanceOf(Client\BackgroundJob::class));
@@ -98,7 +95,6 @@ class ClientTest extends TestCase {
         ]));
 
         $result = $client->getJobStatusAsync('H:test:1');
-        $this->assertInstanceOf(PromiseInterface::class, $result);
 
         $callables = $this->getMockBuilder(\stdClass::class)->addMethods(['fulfilled', 'rejected'])->getMock();
         $callables->expects($this->once())->method('fulfilled')->with($this->isInstanceOf(Client\JobStatus::class));

@@ -17,8 +17,10 @@ class MockDispatcher extends DefaultEventDispatcher {
         return false;
     }
 
-    public function dispatch(object $event){
-        parent::dispatch($event);
+    public function dispatch(object $event) : object{
+        $return = parent::dispatch($event);
         $this->events[] = $event;
+
+        return $return;
     }
 }

@@ -54,7 +54,7 @@ class GearmanEndpointTest extends TestCase {
     public function testConnectFailure(){
         $success = false;
         $this->mockServer->shutdown();
-        $this->endpoint->connect(true)->then(function(){
+        $this->endpoint->connect()->then(function(){
             $this->fail('Connect fulfilled handler should not be called.');
         }, function($error) use (&$success){
             $this->assertInstanceOf(CouldNotConnectException::class, $error);

@@ -66,7 +66,7 @@ class GrabJobHandlerTest extends TestCase {
     /**
      * @return MockObject|callable
      */
-    public function getMockCallback(){
+    public function getMockCallback() : MockObject{
         return $this->getMockBuilder(\stdClass::class)->addMethods(['__invoke'])->getMock();
     }
 }

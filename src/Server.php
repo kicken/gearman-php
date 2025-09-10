@@ -46,7 +46,7 @@ class Server implements LoggerAwareInterface {
     }
 
     /**
-     * Start listening on the configured endpoints for client connections.
+     * Start listening to the configured endpoints for client connections.
      *
      * @return void
      */
